@@ -3,10 +3,12 @@
 A browser app (Chrome on a laptop) that listens to your guitar and teaches you to play
 simple songs, without music notation or jargon.
 
+**Live:** https://troylairson.github.io/catchall/guitar/ (deployed by `.github/workflows/pages.yml` on every push)
+
 ```bash
 cd guitar-coach
 npm install
-npm run dev        # open http://localhost:5173 in Chrome
+npm run dev        # open http://localhost:5173/catchall/guitar/ in Chrome
 npm test           # unit tests (timing feedback, lesson path, chord matching)
 npm run build      # type-check + production build
 ```
