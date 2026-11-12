@@ -17,3 +17,29 @@ describe('NFL drives', () => {
     expect(drives[drives.length - 1]).toMatchObject({ id: 'live1', current: true, result: 'In progress' });
   });
 });
+
+import nhlPbp from './fixtures/nhl-pbp.json';
+import espnNhlSummary from './fixtures/espn-nhl-summary.json';
+import { parseEspnHockey, parseNhlPbp } from '../feeds/hockey';
+
+describe('Penguins events', () => {
+  it('reads the NHL play-by-play with player names', () => {
+    const f = parseNhlPbp(nhlPbp);
+    expect(f.source).toBe('NHL');
+    expect(f.shots).toEqual({ away: 33, home: expect.any(Number), awayAbbr: 'PIT', homeAbbr: 'ANA' });
+    const goal = f.events.find((e) => e.kind === 'goal')!;
+    expect(goal.text).toBe('GOAL — M. Granlund (5), snap shot · Assists: C. Gauthier, J. LaCombe');
+    expect(goal).toMatchObject({ period: '1st', clock: '08:26', team: 'ANA', score: '0–1' });
+    expect(f.events.find((e) => e.kind === 'penalty')!.text).toMatch(/^Penalty — .+, hooking \(2 min\)$/);
+    expect(f.events.some((e) => e.text.includes('stoppage'))).toBe(false);
+  });
+
+  it('reads ESPN hockey plays as a fallback', () => {
+    const f = parseEspnHockey(espnNhlSummary);
+    expect(f.source).toBe('ESPN');
+    expect(f.shots).toMatchObject({ away: 33, awayAbbr: 'PIT', homeAbbr: 'ANA' });
+    expect(f.events.find((e) => e.kind === 'goal')).toMatchObject({ team: 'ANA', score: '0–1', period: '1st' });
+    expect(f.events.find((e) => e.kind === 'penalty')!.text).toMatch(/Tripping .* \(2 min\)$/);
+    expect(f.events.find((e) => e.kind === 'shot')!.text).toMatch(/saved by/);
+  });
+});

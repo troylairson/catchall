@@ -77,12 +77,25 @@ export function nhlGame(g: any, ourAbbr: string): Game | undefined {
 
 export async function nhlSchedule(cfg: TeamConfig, base: string, now = Date.now()): Promise<TeamSchedule> {
   const abbr = cfg.nhl!.abbr;
-  const json = await getJson(`${base}/v1/club-schedule-season/${abbr}/now`);
+  const [json, standings] = await Promise.all([
+    getJson(`${base}/v1/club-schedule-season/${abbr}/now`),
+    getJson(`${base}/v1/standings/now`).catch(() => undefined),
+  ]);
   const games = (json.games ?? []).map((g: any) => nhlGame(g, abbr)).filter(Boolean) as Game[];
   const note = games.some((g) => g.state === 'pre' && Date.parse(g.start) > now)
     ? undefined
     : 'Offseason · next schedule not released yet';
-  return { games, note };
+  const s = standings?.standings?.find((x: any) => x.teamAbbrev?.default === abbr);
+  const ord = (n: number) => {
+    const teen = n % 100 >= 11 && n % 100 <= 13;
+    return `${n}${teen ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+  };
+  return {
+    games,
+    note,
+    record: s ? `${s.wins}-${s.losses}-${s.otLosses}` : undefined,
+    standing: s ? `${ord(s.divisionSequence)} in ${s.divisionName}` : undefined,
+  };
 }
 
 export async function nhlLive(cfg: TeamConfig, base: string): Promise<Game[]> {
