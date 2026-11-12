@@ -2,8 +2,8 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, claude/adoring-euler-49gc23]
-    paths: ['guitar-coach/**', '.github/workflows/pages.yml']
+    branches: [main, claude/adoring-euler-49gc23, sports-app]
+    paths: ['guitar-coach/**', 'sports-app/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -24,23 +24,38 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: guitar-coach/package-lock.json
-      - name: Install, test and build
+          cache-dependency-path: |
+            guitar-coach/package-lock.json
+            sports-app/package-lock.json
+      - name: Guitar coach — install, test and build
         working-directory: guitar-coach
         run: |
           npm ci
           npm test
           npm run build
-      - name: Assemble site (app lives under /guitar/)
+      - name: Sports scores — install, test and build
+        if: hashFiles('sports-app/package.json') != ''
+        working-directory: sports-app
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Assemble site (/guitar/ and /sports/)
         run: |
           mkdir -p _site/guitar
           cp -r guitar-coach/dist/. _site/guitar/
+          if [ -d sports-app/dist ]; then mkdir -p _site/sports && cp -r sports-app/dist/. _site/sports/; fi
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8">
-          <meta http-equiv="refresh" content="0; url=guitar/">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>catchall</title>
-          <a href="guitar/">First Chords — guitar coach</a>
+          <style>body{font:18px/1.5 system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem}</style>
+          <h1>catchall</h1>
+          <ul>
+            <li><a href="guitar/">First Chords — guitar coach</a></li>
+            <li><a href="sports/">Scores — my teams</a></li>
+          </ul>
           HTML
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -51,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}guitar/
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
