@@ -4,7 +4,25 @@ export class HttpError extends Error {
   }
 }
 
-export async function getJson<T = any>(url: string, timeoutMs = 12_000): Promise<T> {
+let memo: Map<string, Promise<any>> | undefined;
+
+/** Run `fn` with GET responses shared by URL (the server checks several teams in one league per run). */
+export async function withSharedRequests<T>(fn: () => Promise<T>): Promise<T> {
+  memo = new Map();
+  try {
+    return await fn();
+  } finally {
+    memo = undefined;
+  }
+}
+
+export function getJson<T = any>(url: string, timeoutMs = 12_000): Promise<T> {
+  if (!memo) return fetchJson<T>(url, timeoutMs);
+  if (!memo.has(url)) memo.set(url, fetchJson(url, timeoutMs));
+  return memo.get(url)!;
+}
+
+async function fetchJson<T = any>(url: string, timeoutMs: number): Promise<T> {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
@@ -24,6 +42,11 @@ export interface Settings {
    * Empty = use ESPN's NHL feed instead. In dev the Vite proxy at /nhl-api is used.
    */
   nhlProxy: string;
+}
+
+/** The Scores server (Cloudflare Worker in worker/): NHL proxy + notifications. */
+export function serverUrl(): string | undefined {
+  return loadSettings().nhlProxy.trim().replace(/\/+$/, '') || undefined;
 }
 
 export function loadSettings(): Settings {

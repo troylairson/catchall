@@ -1,0 +1,25 @@
+# Scores server: score alerts (Web Push) + NHL API proxy. See ../README.md → "Notifications".
+name = "scores"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Backstop: makes sure the every-minute checker is running even if an alarm was lost.
+[triggers]
+crons = ["*/30 * * * *"]
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Hub"]
+
+[vars]
+# Pages that may call this server.
+ALLOWED_ORIGINS = "https://troylairson.github.io,http://localhost:5174,http://localhost:4173"
+# Public half of the VAPID key pair from `npm run vapid` (the private half is a secret).
+VAPID_PUBLIC_KEY = ""
+# Secrets (set with `npx wrangler secret put NAME`):
+#   VAPID_PRIVATE_KEY  private half from `npm run vapid`
+#   VAPID_SUBJECT      mailto: address push services can contact, e.g. mailto:you@example.com

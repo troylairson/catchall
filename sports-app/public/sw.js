@@ -2,7 +2,7 @@
 // - App shell (HTML/JS/CSS/icons): stale-while-revalidate, so the app opens instantly and offline.
 // - Score APIs: network first, falling back to the last cached response when offline.
 // - Team logos: cache first (they rarely change).
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `shell-${VERSION}`;
 const API = `api-${VERSION}`;
 const IMG = `img-${VERSION}`;
@@ -79,4 +79,36 @@ self.addEventListener('fetch', (event) => {
   if (req.headers.get('accept')?.includes('json') || url.pathname.startsWith('/v1/')) {
     return event.respondWith(networkFirst(req));
   }
+});
+
+// ---------- notifications (sent by the Scores server in worker/) ----------
+self.addEventListener('push', (event) => {
+  let msg = {};
+  try {
+    msg = event.data ? event.data.json() : {};
+  } catch {
+    msg = { title: 'Scores', body: event.data ? event.data.text() : '' };
+  }
+  event.waitUntil(
+    self.registration.showNotification(msg.title || 'Scores', {
+      body: msg.body || '',
+      tag: msg.tag || undefined,
+      renotify: !!msg.tag,
+      icon: `${scope}icons/icon-192.png`,
+      badge: `${scope}icons/icon-192.png`,
+      data: { url: msg.url || scope },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || scope;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      const win = wins.find((w) => w.url.startsWith(scope));
+      if (win) return win.navigate(url).then((w) => (w || win).focus());
+      return self.clients.openWindow(url);
+    }),
+  );
 });

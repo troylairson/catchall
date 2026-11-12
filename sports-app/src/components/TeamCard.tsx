@@ -114,7 +114,7 @@ export function TeamCard({
       </header>
 
       {!snap && !error && <div className="skeleton" />}
-      {!snap && error && <div className="error small">Couldn’t load scores. Pull down or tap refresh.</div>}
+      {!snap && error && <div className="error small">Couldn’t load scores. Tap refresh to try again.</div>}
 
       {snap?.live && <LiveBlock g={snap.live} />}
       {snap && !snap.live && snap.last && <LastLine g={snap.last} />}

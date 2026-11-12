@@ -17,5 +17,5 @@ export default defineConfig({
       },
     },
   },
-  test: { environment: 'node' },
+  test: { environment: 'node', exclude: ['worker/**', 'node_modules/**'] },
 } as any);

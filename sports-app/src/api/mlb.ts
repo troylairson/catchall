@@ -164,5 +164,5 @@ export async function mlbLive(cfg: TeamConfig, now = Date.now()): Promise<Game[]
   const id = cfg.mlb!.teamId;
   const today = easternDay(now);
   const json = await getJson(scheduleUrl(id, addDays(today, -1), today, true));
-  return parseMlbSchedule(json, id).filter((g) => g.state !== 'pre');
+  return parseMlbSchedule(json, id);
 }

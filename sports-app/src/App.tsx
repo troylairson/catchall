@@ -8,6 +8,7 @@ import { TeamCard } from './components/TeamCard';
 import { GameView } from './views/GameView';
 import { SettingsSheet } from './views/Settings';
 import { TeamsEditor } from './views/TeamsEditor';
+import { syncPush } from './push';
 
 function useHashRoute() {
   const [hash, setHash] = useState(() => location.hash);
@@ -25,6 +26,11 @@ export function App() {
   const route = useHashRoute();
   const fav = useFavorites();
   const scores = useScores(fav.teams);
+  // Keep the server's list of teams to alert about in step with favorites.
+  const favKey = fav.keys.join(',');
+  useEffect(() => {
+    syncPush().catch(() => {});
+  }, [favKey]);
   const [settings, setSettings] = useState(false);
 
   if (route[0] === 'game' && route[1] && route[2]) {
