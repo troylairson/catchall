@@ -41,30 +41,64 @@ Two things can't be done from a web page alone, so there's a small Cloudflare Wo
 
 Everything else works without it.
 
-## Notifications: one-time setup (about 10 minutes)
+## Notifications: one-time setup
 
-You need a free Cloudflare account and Node 20+ on your computer.
+You need a free Cloudflare account. These steps run on any Linux box with Docker over SSH (they were
+written for ZimaOS), so nothing is installed on the host; everything runs in a throwaway `node:22` container.
+
+**1. Create a Cloudflare API token** (on any computer with a browser). `wrangler login` needs a browser
+on the same machine, so over SSH use a token instead:
+
+- dash.cloudflare.com → profile icon → **My Profile → API Tokens → Create Token**
+- Use the **Edit Cloudflare Workers** template. Account Resources: your account. Zone Resources: **All zones**
+  (nothing zone-specific is touched). **Continue → Create Token**, and copy it.
+- Also copy your **Account ID** (Workers & Pages → Overview, right-hand side).
+
+**2. SSH in and start a container.** `/DATA` is ZimaOS's persistent storage, and the keys are kept there.
 
 ```sh
-cd sports-app/worker
-npm install
-npx wrangler login                     # opens a browser to sign in to Cloudflare
-npm run vapid                          # prints a key pair for Web Push
+ssh <user>@<zima-ip>
+mkdir -p /DATA/scores && chmod 700 /DATA/scores
+docker run -it --rm -v /DATA/scores:/work -w /work node:22 bash
 ```
 
-1. Paste the printed **public** key into `wrangler.toml` as `VAPID_PUBLIC_KEY`.
-2. Store the private key and a contact address as secrets:
-   ```sh
-   npx wrangler secret put VAPID_PRIVATE_KEY    # paste the private key
-   npx wrangler secret put VAPID_SUBJECT        # e.g. mailto:you@example.com (push services require one)
-   ```
-3. Deploy: `npm run deploy`. Wrangler prints a URL like `https://scores.<you>.workers.dev`.
-4. On your iPhone, open Scores **from the Home Screen** (iOS only allows notifications there), tap the gear, paste
-   that URL into *Scores server URL*, and tap **Turn on**. Then **Send a test notification**.
+**3. Inside the container:**
 
-The Worker uses one Durable Object for state, which fits in Cloudflare's free plan. `/api/status` on the
-Worker shows how many devices are subscribed and when it last checked. To change who may call it, edit
-`ALLOWED_ORIGINS` in `wrangler.toml`.
+```sh
+export CLOUDFLARE_API_TOKEN='paste-token'
+export CLOUDFLARE_ACCOUNT_ID='paste-account-id'
+
+git clone -b sports-app https://github.com/troylairson/catchall.git   # private repo: use a GitHub token as the password
+cd catchall/sports-app/worker
+npm ci
+
+# Generate the Web Push keys ONCE and keep them; new keys break existing subscriptions.
+[ -f /work/vapid.env ] || npm run --silent vapid -- --env > /work/vapid.env
+chmod 600 /work/vapid.env && . /work/vapid.env
+
+npx wrangler deploy        # first run may ask you to pick a workers.dev subdomain; prints the Worker URL
+printf '%s' "$VAPID_PUBLIC_KEY"  | npx wrangler secret put VAPID_PUBLIC_KEY
+printf '%s' "$VAPID_PRIVATE_KEY" | npx wrangler secret put VAPID_PRIVATE_KEY
+printf '%s' 'mailto:you@example.com' | npx wrangler secret put VAPID_SUBJECT   # any address you read
+
+curl -s https://scores.<your-subdomain>.workers.dev/api/vapid     # should print your public key
+exit
+```
+
+**4. On your iPhone,** open Scores **from the Home Screen icon** (iOS only allows notifications there), tap
+the gear, paste the Worker URL into *Scores server URL*, tap **Turn on**, then **Send a test notification**.
+
+**Updating the server later:**
+
+```sh
+docker run -it --rm -v /DATA/scores:/work -w /work/catchall/sports-app/worker \
+  -e CLOUDFLARE_API_TOKEN='paste-token' -e CLOUDFLARE_ACCOUNT_ID='paste-account-id' \
+  node:22 bash -c 'git pull && npm ci && npx wrangler deploy'
+```
+
+Secrets stay on Cloudflare, so they don't need setting again. The Worker uses one Durable Object for state,
+which fits in Cloudflare's free plan. `/api/status` on the Worker shows how many devices are subscribed and
+when it last checked. To change who may call it, edit `ALLOWED_ORIGINS` in `wrangler.toml`.
 
 ## Develop
 
@@ -77,7 +111,7 @@ npm run build
 npm run catalog   # regenerate src/catalog.json (all teams) after relocations/renames
 
 cd worker && npm install && npm test   # server: push encryption round trip
-npx wrangler dev                        # run the server locally (put VAPID keys in worker/.dev.vars)
+npx wrangler dev                        # run the server locally (put the three VAPID_* values in worker/.dev.vars)
 ```
 
 Deployed by `.github/workflows/pages.yml` together with the guitar coach.

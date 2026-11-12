@@ -18,8 +18,7 @@ new_sqlite_classes = ["Hub"]
 [vars]
 # Pages that may call this server.
 ALLOWED_ORIGINS = "https://troylairson.github.io,http://localhost:5174,http://localhost:4173"
-# Public half of the VAPID key pair from `npm run vapid` (the private half is a secret).
-VAPID_PUBLIC_KEY = ""
-# Secrets (set with `npx wrangler secret put NAME`):
+# Secrets (set with `npx wrangler secret put NAME`, never committed):
+#   VAPID_PUBLIC_KEY   public half from `npm run vapid`
 #   VAPID_PRIVATE_KEY  private half from `npm run vapid`
 #   VAPID_SUBJECT      mailto: address push services can contact, e.g. mailto:you@example.com
