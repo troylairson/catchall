@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { TeamConfig } from '../teams';
+import { teamStyle, type TeamConfig } from '../teams';
 import type { Game, TeamSnapshot } from '../types';
 import { opponent, result } from '../snapshot';
 import { agoLabel, whenLabel } from '../time';
@@ -88,7 +88,7 @@ export function TeamCard({
   error?: string;
   onOpen: (gameId: string) => void;
 }) {
-  const style = { '--team': team.primary, '--team2': team.secondary } as CSSProperties;
+  const style = teamStyle(team) as CSSProperties;
   const target = snap?.live ?? snap?.last;
   return (
     <article

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FeedModule } from '../feeds';
-import type { TeamConfig } from '../teams';
+import { abbrsOf, type TeamConfig } from '../teams';
 import { espnSummary, teamIndex } from '../api/espnSummary';
 import { Logo } from '../components/Logo';
 
@@ -66,7 +66,7 @@ function BballFeedView({ data, team }: { data: BballFeed; team: TeamConfig }) {
           return (
             <li key={p.id} className="ev-wrap">
               {(!prev || prev.period !== p.period) && <div className="ev ev-period small muted">{quarterName(p.period)}</div>}
-              <div className={`ev ${p.scoring ? 'ev-goal' : ''} ${p.team === team.abbr ? 'ours' : ''}`}>
+              <div className={`ev ${p.scoring ? 'ev-goal' : ''} ${abbrsOf(team).has(p.team ?? '') ? 'ours' : ''}`}>
                 <span className="ev-time small muted">{p.clock}</span>
                 {p.team ? <Logo src={data.logos[p.team]} alt={p.team} size={22} /> : <span style={{ width: 22 }} />}
                 <span className="ev-text">{p.text}</span>

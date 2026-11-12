@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import type { TeamConfig } from '../teams';
+import { teamStyle, type TeamConfig } from '../teams';
 import type { Game } from '../types';
 import { Scoreline } from '../components/TeamCard';
 import { whenLabel } from '../time';
@@ -43,7 +43,7 @@ export function GameView({ team, gameId, summary }: { team: TeamConfig; gameId: 
 
   // The schedule knows labels like "ALCS · Game 6" or "Opening Day" that game feeds lack.
   const game = detail?.game ? { ...detail.game, label: summary?.label ?? detail.game.label } : summary;
-  const style = { '--team': team.primary, '--team2': team.secondary } as CSSProperties;
+  const style = teamStyle(team) as CSSProperties;
   const Feed = feed?.Feed;
 
   return (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FeedModule } from '../feeds';
-import type { TeamConfig } from '../teams';
+import { abbrsOf, type TeamConfig } from '../teams';
 import type { Game } from '../types';
 import { nhlBase, getJson } from '../api/http';
 import { nhlGame, periodName } from '../api/nhl';
@@ -191,7 +191,7 @@ function HockeyFeedView({ data, team, game }: { data: HockeyFeed; team: TeamConf
           <h3 className="feed-title">Scoring</h3>
           <ol className="feed card flush">
             {goals.map((e) => (
-              <EventRow key={e.id} e={e} logo={data.logos[e.team ?? '']} ours={e.team === team.abbr} />
+              <EventRow key={e.id} e={e} logo={data.logos[e.team ?? '']} ours={abbrsOf(team).has(e.team ?? '')} />
             ))}
           </ol>
         </>
@@ -207,7 +207,7 @@ function HockeyFeedView({ data, team, game }: { data: HockeyFeed; team: TeamConf
       ) : (
         <ol className="feed card flush">
           {shown.map((e) => (
-            <EventRow key={e.id} e={e} logo={data.logos[e.team ?? '']} ours={e.team === team.abbr} />
+            <EventRow key={e.id} e={e} logo={data.logos[e.team ?? '']} ours={abbrsOf(team).has(e.team ?? '')} />
           ))}
         </ol>
       )}

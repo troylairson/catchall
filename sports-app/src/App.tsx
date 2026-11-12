@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { TEAMS, teamByKey } from './teams';
+import { teamByKey } from './teams';
+import { useFavorites } from './useFavorites';
 import { useScores } from './useScores';
 import { sortTeams } from './snapshot';
 import { easternDay } from './time';
 import { TeamCard } from './components/TeamCard';
 import { GameView } from './views/GameView';
 import { SettingsSheet } from './views/Settings';
+import { TeamsEditor } from './views/TeamsEditor';
 
 function useHashRoute() {
   const [hash, setHash] = useState(() => location.hash);
@@ -21,7 +23,8 @@ const updatedFmt = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '
 
 export function App() {
   const route = useHashRoute();
-  const scores = useScores();
+  const fav = useFavorites();
+  const scores = useScores(fav.teams);
   const [settings, setSettings] = useState(false);
 
   if (route[0] === 'game' && route[1] && route[2]) {
@@ -32,9 +35,11 @@ export function App() {
     }
   }
 
+  if (route[0] === 'teams') return <TeamsEditor onDone={() => (location.hash = '')} />;
+
   const today = easternDay(Date.now());
   const items = sortTeams(
-    TEAMS.map((team) => ({ team, snap: scores.snapshots[team.key] })),
+    fav.teams.map((team) => ({ team, snap: scores.snapshots[team.key] })),
     (iso) => easternDay(iso) === today,
   );
 
@@ -74,7 +79,15 @@ export function App() {
             onOpen={(id) => (location.hash = `#/game/${team.key}/${id}`)}
           />
         ))}
+        {fav.teams.length === 0 && (
+          <div className="card empty">
+            <p>Pick the teams you follow.</p>
+          </div>
+        )}
       </main>
+      <button className="btn wide" onClick={() => (location.hash = '#/teams')}>
+        {fav.teams.length ? 'Edit teams' : 'Add teams'}
+      </button>
       <footer className="foot muted small">All times Eastern · Data: ESPN, NHL, MLB</footer>
       {settings && (
         <SettingsSheet

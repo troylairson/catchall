@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FeedModule } from '../feeds';
 import { espnSummary } from '../api/espnSummary';
 import { Logo } from '../components/Logo';
+import { abbrsOf, type TeamConfig } from '../teams';
 
 export interface Play {
   id: string;
@@ -104,7 +105,7 @@ function DriveRow({ d, open, onToggle, ours }: { d: Drive; open: boolean; onTogg
   );
 }
 
-function Drives({ data, team }: { data: Drive[]; team: { abbr: string } }) {
+function Drives({ data, team }: { data: Drive[]; team: TeamConfig }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const drives = [...data].reverse();
   if (!drives.length) return <div className="card muted">No drives yet. Check back at kickoff.</div>;
@@ -116,7 +117,7 @@ function Drives({ data, team }: { data: Drive[]; team: { abbr: string } }) {
           <DriveRow
             key={d.id}
             d={d}
-            ours={d.team === team.abbr}
+            ours={abbrsOf(team).has(d.team)}
             open={open[d.id] ?? (i === 0 && d.current)}
             onToggle={() => setOpen((o) => ({ ...o, [d.id]: !(o[d.id] ?? (i === 0 && d.current)) }))}
           />

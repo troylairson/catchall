@@ -544,7 +544,7 @@ article.card[role='button']:active {
   flex: none;
 }
 .chip.on {
-  background: var(--team);
+  background: var(--team, #0a84ff);
   color: #fff;
 }
 .ev-wrap + .ev-wrap {
@@ -668,4 +668,61 @@ article.card[role='button']:active {
 .action {
   padding-left: 32px !important;
   font-style: italic;
+}
+
+/* ---------- teams editor ---------- */
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+}
+.pick + .pick {
+  border-top: 1px solid var(--line);
+}
+.pick-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+.pick .icon-btn {
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+}
+.pick .icon-btn:disabled {
+  opacity: 0.25;
+}
+.icon-btn.danger {
+  color: var(--loss);
+}
+.small-btn {
+  padding: 6px 12px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.btn.wide {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+.search {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.hint {
+  margin: 8px 4px 0;
+}
+.empty {
+  text-align: center;
 }

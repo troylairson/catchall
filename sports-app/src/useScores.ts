@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { TEAMS, type TeamConfig } from './teams';
+import type { TeamConfig } from './teams';
 import type { Game, TeamSnapshot } from './types';
 import { loadLive, loadSchedule, sourceOf } from './api';
 import type { TeamSchedule } from './api/espn';
@@ -49,12 +49,15 @@ function hot(d: TeamData | undefined, now: number) {
   return n - now < 15 * 60_000 && n - now > -6 * 3600_000;
 }
 
-export function useScores() {
+export function useScores(teams: TeamConfig[]) {
   const [data, setData] = useState<Record<string, TeamData>>(readCache);
   const [loading, setLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number>();
   const dataRef = useRef(data);
   dataRef.current = data;
+  const teamsRef = useRef(teams);
+  teamsRef.current = teams;
+  const teamKeys = teams.map((t) => t.key).join(',');
 
   const refreshTeam = useCallback(async (cfg: TeamConfig, full: boolean) => {
     const prev = dataRef.current[cfg.key];
@@ -79,7 +82,7 @@ export function useScores() {
   const refresh = useCallback(
     async (full = false) => {
       setLoading(true);
-      await Promise.all(TEAMS.map((t) => refreshTeam(t, full)));
+      await Promise.all(teamsRef.current.map((t) => refreshTeam(t, full)));
       setLoading(false);
       setUpdatedAt(Date.now());
     },
@@ -97,7 +100,7 @@ export function useScores() {
       if (document.hidden) return;
       await refresh(full);
       if (stopped) return;
-      const snaps = TEAMS.map((t) => snapshotOf(dataRef.current[t.key]));
+      const snaps = teamsRef.current.map((t) => snapshotOf(dataRef.current[t.key]));
       timer = window.setTimeout(() => tick(false), pollDelay(snaps));
     };
     const onVis = () => {
@@ -113,10 +116,10 @@ export function useScores() {
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('online', onVis);
     };
-  }, [refresh]);
+  }, [refresh, teamKeys]);
 
-  const snapshots = Object.fromEntries(TEAMS.map((t) => [t.key, snapshotOf(data[t.key])]));
-  const errors = Object.fromEntries(TEAMS.map((t) => [t.key, data[t.key]?.error]));
+  const snapshots = Object.fromEntries(teams.map((t) => [t.key, snapshotOf(data[t.key])]));
+  const errors = Object.fromEntries(teams.map((t) => [t.key, data[t.key]?.error]));
   const games = (key: string) => {
     const d = data[key];
     return d?.schedule ? mergeGames(d.schedule.games, d.live) : [];
