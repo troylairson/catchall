@@ -43,3 +43,22 @@ describe('Penguins events', () => {
     expect(f.events.find((e) => e.kind === 'shot')!.text).toMatch(/saved by/);
   });
 });
+
+import nbaSummary from './fixtures/espn-nba-summary.json';
+import { parseNbaPlays, quarterName } from '../feeds/basketball';
+
+describe('Cavaliers plays', () => {
+  it('flattens ESPN plays with team, score and quarter', () => {
+    const f = parseNbaPlays(nbaSummary);
+    expect(f.plays).toHaveLength(15);
+    const steal = f.plays.find((p) => p.text.includes('steals'))!;
+    expect(steal.text).toBe('Mikal Bridges bad pass turnover (Donovan Mitchell steals)');
+    expect(steal.team).toBe('NY');
+    expect(f.plays[f.plays.length - 1]).toMatchObject({ text: 'End of Game', score: '115–107', period: 4 });
+    expect(Object.keys(f.logos).sort()).toEqual(['CLE', 'NY']);
+  });
+
+  it('names overtimes', () => {
+    expect([4, 5, 6].map(quarterName)).toEqual(['Q4', 'OT', '2OT']);
+  });
+});

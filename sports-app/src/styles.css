@@ -532,3 +532,24 @@ article.card[role='button']:active {
 .source {
   text-align: center;
 }
+.chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 4px 0 8px;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.chips .chip {
+  flex: none;
+}
+.chip.on {
+  background: var(--team);
+  color: #fff;
+}
+.ev-wrap + .ev-wrap {
+  border-top: 1px solid var(--line);
+}
+.ev.ev-period {
+  display: block;
+}
