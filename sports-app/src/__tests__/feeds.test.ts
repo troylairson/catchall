@@ -62,3 +62,39 @@ describe('Cavaliers plays', () => {
     expect([4, 5, 6].map(quarterName)).toEqual(['Q4', 'OT', '2OT']);
   });
 });
+
+import mlbFeed from './fixtures/mlb-feed.json';
+import { gameFromFeed, ordinal, parseMlbFeed } from '../feeds/baseball';
+
+describe('Guardians pitch-by-pitch', () => {
+  const f = parseMlbFeed(mlbFeed);
+
+  it('lists at-bats with results and pitches', () => {
+    expect(f.atBats).toHaveLength(11);
+    const ab = f.atBats[0];
+    expect(ab).toMatchObject({ inning: 2, top: true, result: 'Strikeout', complete: true });
+    const pitches = ab.events.filter((e) => 'pitch' in e);
+    expect(pitches.length).toBeGreaterThanOrEqual(3);
+    const last = pitches[pitches.length - 1] as any;
+    expect(last.pitch.kind).toBe('strike');
+    expect(last.pitch.mph).toBeGreaterThan(60);
+  });
+
+  it('marks the scoring play with the score', () => {
+    const double = f.atBats.find((a) => a.result === 'Double')!;
+    expect(double.scoring).toBe(true);
+    expect(double.score).toMatch(/^0–\d$/);
+  });
+
+  it('builds the linescore and header', () => {
+    expect(f.linescore?.away).toMatchObject({ abbr: 'CLE', r: 3, h: 7, e: 0 });
+    expect(f.linescore?.home).toMatchObject({ abbr: 'TB', r: 7 });
+    const g = gameFromFeed(mlbFeed, 114)!;
+    expect(g).toMatchObject({ state: 'post', status: 'Final', isHome: false, label: 'ALCS' }); // the live feed has no series game number
+    expect(f.situation).toBeUndefined(); // final, not live
+  });
+
+  it('writes ordinals', () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21].map(ordinal)).toEqual(['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st']);
+  });
+});

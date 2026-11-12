@@ -41,7 +41,8 @@ export function GameView({ team, gameId, summary }: { team: TeamConfig; gameId: 
     };
   }, [team, gameId, feed]);
 
-  const game = detail?.game ?? summary;
+  // The schedule knows labels like "ALCS · Game 6" or "Opening Day" that game feeds lack.
+  const game = detail?.game ? { ...detail.game, label: summary?.label ?? detail.game.label } : summary;
   const style = { '--team': team.primary, '--team2': team.secondary } as CSSProperties;
   const Feed = feed?.Feed;
 

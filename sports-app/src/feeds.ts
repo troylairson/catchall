@@ -4,6 +4,7 @@ import type { TeamConfig } from './teams';
 import { football } from './feeds/football';
 import { hockey } from './feeds/hockey';
 import { basketball } from './feeds/basketball';
+import { baseball } from './feeds/baseball';
 
 export interface FeedModule<T = any> {
   load: (team: TeamConfig, gameId: string) => Promise<{ game?: Game; data: T }>;
@@ -15,4 +16,5 @@ export const FEEDS: Partial<Record<League, FeedModule>> = {
   nfl: football,
   nhl: hockey,
   nba: basketball,
+  mlb: baseball,
 };
