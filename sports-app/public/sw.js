@@ -2,7 +2,7 @@
 // - App shell (HTML/JS/CSS/icons): stale-while-revalidate, so the app opens instantly and offline.
 // - Score APIs: network first, falling back to the last cached response when offline.
 // - Team logos: cache first (they rarely change).
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `shell-${VERSION}`;
 const API = `api-${VERSION}`;
 const IMG = `img-${VERSION}`;
@@ -28,7 +28,7 @@ self.addEventListener('activate', (event) => {
 });
 
 const API_HOSTS = ['site.api.espn.com', 'statsapi.mlb.com', 'api-web.nhle.com'];
-const IMG_HOSTS = ['a.espncdn.com', 'assets.nhle.com', 'www.mlbstatic.com'];
+const IMG_HOSTS = ['a.espncdn.com', 'assets.nhle.com', 'www.mlbstatic.com', 'espnmedia-cdn.akamaized.net'];
 
 async function networkFirst(req) {
   const cache = await caches.open(API);

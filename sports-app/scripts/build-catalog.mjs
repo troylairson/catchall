@@ -46,8 +46,7 @@ for (const { league, sport } of LEAGUES) {
     if (league === 'mlb') {
       const id = mlbIds[MLB_ABBR[abbr] ?? abbr];
       if (!id) throw new Error(`No MLB id for ${abbr}`);
-      entry.mlb = { teamId: id };
-      delete entry.espn;
+      entry.mlb = { teamId: id }; // scores come from MLB; entry.espn is kept for news
     }
     out.push(entry);
   }

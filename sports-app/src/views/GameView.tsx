@@ -4,12 +4,14 @@ import type { Game } from '../types';
 import { Scoreline } from '../components/TeamCard';
 import { whenLabel } from '../time';
 import { FEEDS } from '../feeds';
+import { News } from '../components/News';
 
 export function GameView({ team, gameId, summary }: { team: TeamConfig; gameId: string; summary?: Game }) {
   const feed = FEEDS[team.league];
   const [detail, setDetail] = useState<{ game?: Game; data: any }>();
   const [error, setError] = useState<string>();
   const [updated, setUpdated] = useState<number>();
+  const [tab, setTab] = useState<'pbp' | 'news'>('pbp');
   const liveRef = useRef(summary?.state === 'live');
 
   useEffect(() => {
@@ -65,10 +67,23 @@ export function GameView({ team, gameId, summary }: { team: TeamConfig; gameId: 
           {game.situation && <div className="situation">{game.situation}</div>}
         </section>
       )}
-      {error && !detail && <div className="card error">Couldn’t load play-by-play: {error}</div>}
-      {!feed && <div className="card muted">Play-by-play for this sport is coming soon.</div>}
-      {feed && !detail && !error && <div className="card skeleton tall" />}
-      {Feed && detail && <Feed data={detail.data} team={team} game={game} />}
+      <div className="segmented" role="tablist">
+        <button role="tab" aria-selected={tab === 'pbp'} className={tab === 'pbp' ? 'on' : ''} onClick={() => setTab('pbp')}>
+          Play-by-play
+        </button>
+        <button role="tab" aria-selected={tab === 'news'} className={tab === 'news' ? 'on' : ''} onClick={() => setTab('news')}>
+          {team.short} news
+        </button>
+      </div>
+      {tab === 'news' && <News team={team} />}
+      {tab === 'pbp' && (
+        <>
+          {error && !detail && <div className="card error">Couldn’t load play-by-play: {error}</div>}
+          {!feed && <div className="card muted">Play-by-play for this sport is coming soon.</div>}
+          {feed && !detail && !error && <div className="card skeleton tall" />}
+          {Feed && detail && <Feed data={detail.data} team={team} game={game} />}
+        </>
+      )}
     </div>
   );
 }

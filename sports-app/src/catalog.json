@@ -5,6 +5,11 @@
   "name": "Arizona Diamondbacks",
   "short": "Diamondbacks",
   "abbr": "ARI",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "ari"
+  },
   "primary": "#aa182c",
   "secondary": "#000000",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/ari.png",
@@ -19,6 +24,11 @@
   "name": "Athletics",
   "short": "Athletics",
   "abbr": "ATH",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "ath"
+  },
   "primary": "#003831",
   "secondary": "#efb21e",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/ath.png",
@@ -33,6 +43,11 @@
   "name": "Atlanta Braves",
   "short": "Braves",
   "abbr": "ATL",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "atl"
+  },
   "primary": "#0c2340",
   "secondary": "#ba0c2f",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/atl.png",
@@ -47,6 +62,11 @@
   "name": "Baltimore Orioles",
   "short": "Orioles",
   "abbr": "BAL",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "bal"
+  },
   "primary": "#df4601",
   "secondary": "#000000",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/bal.png",
@@ -61,6 +81,11 @@
   "name": "Boston Red Sox",
   "short": "Red Sox",
   "abbr": "BOS",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "bos"
+  },
   "primary": "#0d2b56",
   "secondary": "#bd3039",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/bos.png",
@@ -75,6 +100,11 @@
   "name": "Chicago Cubs",
   "short": "Cubs",
   "abbr": "CHC",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "chc"
+  },
   "primary": "#0e3386",
   "secondary": "#cc3433",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/chc.png",
@@ -89,6 +119,11 @@
   "name": "Chicago White Sox",
   "short": "White Sox",
   "abbr": "CHW",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "chw"
+  },
   "primary": "#000000",
   "secondary": "#c4ced4",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/chw.png",
@@ -103,6 +138,11 @@
   "name": "Cincinnati Reds",
   "short": "Reds",
   "abbr": "CIN",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "cin"
+  },
   "primary": "#c6011f",
   "secondary": "#ffffff",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/cin.png",
@@ -117,6 +157,11 @@
   "name": "Cleveland Guardians",
   "short": "Guardians",
   "abbr": "CLE",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "cle"
+  },
   "primary": "#002b5c",
   "secondary": "#e31937",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/cle.png",
@@ -131,6 +176,11 @@
   "name": "Colorado Rockies",
   "short": "Rockies",
   "abbr": "COL",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "col"
+  },
   "primary": "#33006f",
   "secondary": "#000000",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/col.png",
@@ -145,6 +195,11 @@
   "name": "Detroit Tigers",
   "short": "Tigers",
   "abbr": "DET",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "det"
+  },
   "primary": "#0a2240",
   "secondary": "#ff4713",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/det.png",
@@ -159,6 +214,11 @@
   "name": "Houston Astros",
   "short": "Astros",
   "abbr": "HOU",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "hou"
+  },
   "primary": "#002d62",
   "secondary": "#eb6e1f",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/hou.png",
@@ -173,6 +233,11 @@
   "name": "Kansas City Royals",
   "short": "Royals",
   "abbr": "KC",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "kc"
+  },
   "primary": "#004687",
   "secondary": "#7ab2dd",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/kc.png",
@@ -187,6 +252,11 @@
   "name": "Los Angeles Angels",
   "short": "Angels",
   "abbr": "LAA",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "laa"
+  },
   "primary": "#ba0021",
   "secondary": "#c4ced4",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/laa.png",
@@ -201,6 +271,11 @@
   "name": "Los Angeles Dodgers",
   "short": "Dodgers",
   "abbr": "LAD",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "lad"
+  },
   "primary": "#005a9c",
   "secondary": "#ffffff",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/lad.png",
@@ -215,6 +290,11 @@
   "name": "Miami Marlins",
   "short": "Marlins",
   "abbr": "MIA",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "mia"
+  },
   "primary": "#00a3e0",
   "secondary": "#000000",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/mia.png",
@@ -229,6 +309,11 @@
   "name": "Milwaukee Brewers",
   "short": "Brewers",
   "abbr": "MIL",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "mil"
+  },
   "primary": "#13294b",
   "secondary": "#ffc72c",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/mil.png",
@@ -243,6 +328,11 @@
   "name": "Minnesota Twins",
   "short": "Twins",
   "abbr": "MIN",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "min"
+  },
   "primary": "#031f40",
   "secondary": "#e20e32",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/min.png",
@@ -257,6 +347,11 @@
   "name": "New York Mets",
   "short": "Mets",
   "abbr": "NYM",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "nym"
+  },
   "primary": "#002d72",
   "secondary": "#ff5910",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/nym.png",
@@ -271,6 +366,11 @@
   "name": "New York Yankees",
   "short": "Yankees",
   "abbr": "NYY",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "nyy"
+  },
   "primary": "#132448",
   "secondary": "#c4ced4",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png",
@@ -285,6 +385,11 @@
   "name": "Philadelphia Phillies",
   "short": "Phillies",
   "abbr": "PHI",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "phi"
+  },
   "primary": "#e81828",
   "secondary": "#003278",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/phi.png",
@@ -299,6 +404,11 @@
   "name": "Pittsburgh Pirates",
   "short": "Pirates",
   "abbr": "PIT",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "pit"
+  },
   "primary": "#000000",
   "secondary": "#fdb827",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/pit.png",
@@ -313,6 +423,11 @@
   "name": "San Diego Padres",
   "short": "Padres",
   "abbr": "SD",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "sd"
+  },
   "primary": "#2f241d",
   "secondary": "#ffc425",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/sd.png",
@@ -327,6 +442,11 @@
   "name": "San Francisco Giants",
   "short": "Giants",
   "abbr": "SF",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "sf"
+  },
   "primary": "#000000",
   "secondary": "#fd5a1e",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/sf.png",
@@ -341,6 +461,11 @@
   "name": "Seattle Mariners",
   "short": "Mariners",
   "abbr": "SEA",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "sea"
+  },
   "primary": "#005c5c",
   "secondary": "#0c2c56",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/sea.png",
@@ -355,6 +480,11 @@
   "name": "St. Louis Cardinals",
   "short": "Cardinals",
   "abbr": "STL",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "stl"
+  },
   "primary": "#be0a14",
   "secondary": "#001541",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/stl.png",
@@ -369,6 +499,11 @@
   "name": "Tampa Bay Rays",
   "short": "Rays",
   "abbr": "TB",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "tb"
+  },
   "primary": "#092c5c",
   "secondary": "#8fbce6",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/tb.png",
@@ -383,6 +518,11 @@
   "name": "Texas Rangers",
   "short": "Rangers",
   "abbr": "TEX",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "tex"
+  },
   "primary": "#003278",
   "secondary": "#c0111f",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/tex.png",
@@ -397,6 +537,11 @@
   "name": "Toronto Blue Jays",
   "short": "Blue Jays",
   "abbr": "TOR",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "tor"
+  },
   "primary": "#134a8e",
   "secondary": "#6cace5",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/tor.png",
@@ -411,6 +556,11 @@
   "name": "Washington Nationals",
   "short": "Nationals",
   "abbr": "WSH",
+  "espn": {
+   "sport": "baseball",
+   "league": "mlb",
+   "abbr": "wsh"
+  },
   "primary": "#ab0003",
   "secondary": "#11225b",
   "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png",

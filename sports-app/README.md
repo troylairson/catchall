@@ -18,7 +18,8 @@ system light/dark setting, and shows the last data it loaded when you're offline
   20 seconds; otherwise every 5 minutes. Polling pauses when the app is in the background.
 - Offseason: shows the last result and the next real game, e.g. **Opening Day** for the Guardians, with
   "Spring training starts …" underneath.
-- Tap a card for play-by-play of the live (or most recent) game.
+- Tap a card for play-by-play of the live (or most recent) game, or switch to that team's **news** (ESPN
+  headlines, newest first, league-wide roundups that never mention the team filtered out).
 
 ## Data sources (free, no key)
 
