@@ -44,7 +44,13 @@ export function App() {
         <h1>Scores</h1>
         <div className="topbar-actions">
           <span className="muted small" aria-live="polite">
-            {scores.loading ? 'Updating…' : scores.updatedAt ? `Updated ${updatedFmt.format(scores.updatedAt)}` : ''}
+            {!navigator.onLine
+              ? 'Offline · last known scores'
+              : scores.loading
+                ? 'Updating…'
+                : scores.updatedAt
+                  ? `Updated ${updatedFmt.format(scores.updatedAt)}`
+                  : ''}
           </span>
           <button className="icon-btn" onClick={() => scores.refresh(true)} aria-label="Refresh" disabled={scores.loading}>
             <svg viewBox="0 0 24 24" width="20" height="20" className={scores.loading ? 'spin' : ''}>
