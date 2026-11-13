@@ -1,6 +1,6 @@
 import type { Board, Person } from '../../shared/types';
 import { dateRange, dayOfMonth, shortDate, weekdayName } from '../../shared/dates';
-import { activeTrip, colorVar, itemsFor, type DayItem } from '../lib';
+import { activeTrip, colorVar, familyTrip, itemsFor, personalTrip, type DayItem } from '../lib';
 import { Avatar } from './Avatar';
 
 function Chip({ item, person }: { item: DayItem; person?: Person }) {
@@ -21,7 +21,7 @@ function Chip({ item, person }: { item: DayItem; person?: Person }) {
 
 export function WeekView({ board }: { board: Board }) {
   const days = dateRange(board.from, board.to);
-  const hasFamily = days.some(d => itemsFor(board, d, null).length > 0);
+  const hasFamily = days.some(d => itemsFor(board, d, null).length > 0 || familyTrip(board, d));
   const rows: Array<Person | null> = [...board.people, ...(hasFamily ? [null] : [])];
 
   return (
@@ -41,14 +41,15 @@ export function WeekView({ board }: { board: Board }) {
         const cells: React.ReactNode[] = [];
         for (let i = 0; i < days.length; i++) {
           const d = days[i];
-          const trip = person ? activeTrip(board, person.id, d) : null;
+          // Individual trips span a person's row; the family's trip spans the Family row.
+          const trip = person ? personalTrip(board, person.id, d) : familyTrip(board, d);
           if (trip) {
             // One block across the consecutive days of the trip.
             let span = 1;
             while (i + span < days.length && days[i + span] <= trip.endsOn) span++;
             cells.push(
-              <div key={d} className="wk-trip" style={{ gridColumn: `span ${span}`, ...colorVar(person!) }}>
-                <div className="wk-trip-city">✈ {trip.city}</div>
+              <div key={d} className="wk-trip" style={{ gridColumn: `span ${span}`, ...colorVar(person ?? undefined) }}>
+                <div className="wk-trip-city">✈ {person ? trip.city : `Family trip to ${trip.city}`}</div>
                 <div className="wk-trip-row">{shortDate(trip.startsOn)} – {shortDate(trip.endsOn)}{trip.returnNote && ` · ${trip.returnNote}`}</div>
               </div>,
             );

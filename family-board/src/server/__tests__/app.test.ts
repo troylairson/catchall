@@ -103,3 +103,18 @@ describe('editing', () => {
     expect((await call('POST', '/api/trips', { ...trip, tz: 'Mars/Base' })).status).toBe(400);
   });
 });
+
+describe('family trips', () => {
+  it('accepts a trip for everyone and skips the kids’ activities', async () => {
+    await call('POST', '/api/demo/clear');
+    expect((await call('POST', '/api/trips', {
+      personId: 'everyone', city: 'Orlando', tz: 'America/New_York', startsOn: '2026-11-12', endsOn: '2026-11-15',
+    })).status).toBe(201);
+    await call('POST', '/api/activities', {
+      personId: 'everly', name: 'Piano', rrule: 'FREQ=WEEKLY;BYDAY=FR', startTime: '17:00', endTime: '17:30', startsOn: '2026-09-01',
+    });
+    const b = await board();
+    expect(b.trips[0].personId).toBe('everyone');
+    expect(b.answers[0]).toMatchObject({ happening: false, today: { reason: 'Away in Orlando' } });
+  });
+});

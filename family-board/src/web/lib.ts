@@ -2,7 +2,7 @@
  *  mixing calendar events and kid activities. */
 
 import type { CSSProperties } from 'react';
-import type { Board, CalendarEvent, Occurrence, OccurrenceStatus, Person, Trip } from '../shared/types';
+import { EVERYONE, type Board, type CalendarEvent, type Occurrence, type OccurrenceStatus, type Person, type Trip } from '../shared/types';
 import { daysBetween, formatTime, timeToMinutes, toZoned, zoneAbbrev } from '../shared/dates';
 
 export interface DayItem {
@@ -75,8 +75,32 @@ export function itemsFor(board: Board, date: string, personId: string | null): D
     personId === null ? i.personIds.length === 0 : i.personIds.includes(personId));
 }
 
+const covers = (t: Trip, date: string) => t.startsOn <= date && date <= t.endsOn;
+
+/** A trip this person takes on their own. */
+export function personalTrip(board: Board, personId: string, date: string): Trip | null {
+  return board.trips.find(t => t.personId === personId && covers(t, date)) ?? null;
+}
+
+/** A trip the whole family takes, such as a vacation. */
+export function familyTrip(board: Board, date: string): Trip | null {
+  return board.trips.find(t => t.personId === EVERYONE && covers(t, date)) ?? null;
+}
+
+/** Whether this person is away, on their own trip or with everyone. */
 export function activeTrip(board: Board, personId: string, date: string): Trip | null {
-  return board.trips.find(t => t.personId === personId && t.startsOn <= date && date <= t.endsOn) ?? null;
+  return personalTrip(board, personId, date) ?? familyTrip(board, date);
+}
+
+/** Everyone who is away on a date: the family trip first, then individual trips. */
+export function awayOn(board: Board, date: string): Array<{ trip: Trip; person: Person | null }> {
+  const family = familyTrip(board, date);
+  const out: Array<{ trip: Trip; person: Person | null }> = family ? [{ trip: family, person: null }] : [];
+  for (const p of board.people) {
+    const t = personalTrip(board, p.id, date);
+    if (t) out.push({ trip: t, person: p });
+  }
+  return out;
 }
 
 export function tripProgress(trip: Trip, today: string) {

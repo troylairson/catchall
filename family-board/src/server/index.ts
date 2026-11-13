@@ -4,8 +4,10 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Store } from './store';
 import { seedIfEmpty } from './seed';
-import { createApp } from './app';
+import { ChangeBus, createApp } from './app';
 import { scheduleBackups } from './backup';
+import { Secrets } from './secrets';
+import { CalendarSync } from './sync';
 
 const dataDir = process.env.DATA_DIR ?? '.data';
 const webDir = process.env.WEB_DIR ?? 'dist/web';
@@ -16,7 +18,14 @@ const store = new Store(join(dataDir, 'family-board.db'));
 seedIfEmpty(store);
 scheduleBackups(store, process.env.BACKUP_DIR ?? join(dataDir, 'backups'));
 
-const app = createApp({ store, weather: process.env.WEATHER !== '0' });
+const bus = new ChangeBus();
+const sync = new CalendarSync(store, Secrets.fromDataDir(dataDir), {
+  serverUrl: process.env.CALDAV_URL,
+  onChange: () => bus.emit(),
+});
+sync.start(Number(process.env.SYNC_MINUTES ?? 10));
+
+const app = createApp({ store, bus, sync, weather: process.env.WEATHER !== '0' });
 app.use('/*', serveStatic({ root: webDir }));
 app.get('*', serveStatic({ path: join(webDir, 'index.html') }));
 

@@ -157,3 +157,30 @@ describe('rule text and presets', () => {
       .toBe('Every Tue & Thu, 3:15 PM–4:30 PM · skips days with no school · ends Thu, Dec 17');
   });
 });
+
+describe('trips', () => {
+  const trip = (personId: string) => ({
+    id: 't', personId, city: 'Orlando', tz: 'America/New_York', startsOn: '2026-11-16', endsOn: '2026-11-20', returnNote: '',
+  });
+
+  it('skips a kid’s activities during a family trip', () => {
+    const c = makeContext(schoolDays, year, [], [trip('everyone')]);
+    const occ = occurrencesFor(activity(), '2026-11-16', '2026-11-22', c);
+    expect(occ.map(o => [o.date, o.status, o.reason])).toEqual([
+      ['2026-11-17', 'skipped', 'Away in Orlando'], ['2026-11-19', 'skipped', 'Away in Orlando'],
+    ]);
+    expect(answerFor(activity(), '2026-11-17', c)).toMatchObject({ happening: false, next: { date: '2026-11-24' } });
+  });
+
+  it('skips only the traveler’s activities on a personal trip', () => {
+    expect(occurrencesFor(activity(), '2026-11-17', '2026-11-17', makeContext(schoolDays, year, [], [trip('lincoln')]))[0].status).toBe('skipped');
+    expect(occurrencesFor(activity(), '2026-11-17', '2026-11-17', makeContext(schoolDays, year, [], [trip('everly')]))[0].status).toBe('on');
+  });
+
+  it('keeps a session deliberately moved into the trip', () => {
+    const c = makeContext(schoolDays, year,
+      [{ id: 'x', activityId: 'chess', date: '2026-11-19', kind: 'move', newStartTime: '08:00', newEndTime: '09:00' }],
+      [trip('everyone')]);
+    expect(occurrencesFor(activity(), '2026-11-19', '2026-11-19', c)[0].status).toBe('on');
+  });
+});

@@ -1,6 +1,6 @@
 import type { Board, Person } from '../../shared/types';
 import { formatTime, shortDate } from '../../shared/dates';
-import { activeTrip, colorVar, itemsFor, nowMinutes, tripProgress, type DayItem } from '../lib';
+import { colorVar, familyTrip, itemsFor, nowMinutes, personalTrip, tripProgress, type DayItem } from '../lib';
 import { Avatar } from './Avatar';
 
 function ItemCard({ item, past, next, color }: { item: DayItem; past: boolean; next: boolean; color: React.CSSProperties }) {
@@ -29,7 +29,8 @@ function NowLine({ label }: { label: string }) {
 function Column({ board, person, now }: { board: Board; person: Person; now: Date }) {
   const today = board.today;
   const items = itemsFor(board, today, person.id);
-  const trip = activeTrip(board, person.id, today);
+  // The whole family's trip shows once above the columns, not in each one.
+  const trip = personalTrip(board, person.id, today);
   const { minutes, date } = nowMinutes(board, now);
   const isToday = date === today;
   const timed = items.filter(i => !i.allDay);
@@ -63,12 +64,12 @@ function Column({ board, person, now }: { board: Board; person: Person; now: Dat
   );
 }
 
-function TripCard({ board, tripId }: { board: Board; tripId: string }) {
+function TripCard({ board, tripId, wide }: { board: Board; tripId: string; wide?: boolean }) {
   const trip = board.trips.find(t => t.id === tripId)!;
   const p = tripProgress(trip, board.today);
   return (
-    <div className="trip">
-      <div className="trip-kicker">✈ Day {p.day} of {p.days}</div>
+    <div className={`trip${wide ? ' trip-wide' : ''}`}>
+      <div className="trip-kicker">✈ {wide ? 'Family trip · ' : ''}Day {p.day} of {p.days}</div>
       <div className="trip-city">{trip.city}</div>
       <div className="trip-bar"><span style={{ width: `${Math.min(100, (p.day / p.days) * 100)}%` }} /></div>
       <div className="trip-row">
@@ -82,8 +83,10 @@ function TripCard({ board, tripId }: { board: Board; tripId: string }) {
 export function TodayView({ board, now }: { board: Board; now: Date }) {
   const family = itemsFor(board, board.today, null);
   const noSchool = board.schoolDays.find(d => d.date === board.today && d.kind !== 'info');
+  const vacation = familyTrip(board, board.today);
   return (
     <div className="today">
+      {vacation && <TripCard board={board} tripId={vacation.id} wide />}
       {(family.length > 0 || noSchool) && (
         <div className="family-strip">
           <span className="eyebrow">Everyone</span>

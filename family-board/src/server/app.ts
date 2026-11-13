@@ -4,8 +4,9 @@ import type { Store } from './store';
 import { buildBoard } from './board';
 import { loadDemoData } from './seed';
 import { getWeather } from './weather';
+import type { CalendarSync } from './sync';
 import { isHexColor } from '../shared/colors';
-import type { Activity, ActivityException, Settings, Trip } from '../shared/types';
+import { EVERYONE, type Activity, type ActivityException, type Settings, type Trip } from '../shared/types';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -32,9 +33,10 @@ export interface AppOptions {
   bus?: ChangeBus;
   now?: () => Date;
   weather?: boolean;
+  sync?: CalendarSync;
 }
 
-export function createApp({ store, bus = new ChangeBus(), now = () => new Date(), weather = true }: AppOptions) {
+export function createApp({ store, bus = new ChangeBus(), now = () => new Date(), weather = true, sync }: AppOptions) {
   const app = new Hono();
 
   app.onError((err, c) => {
@@ -74,6 +76,7 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
       next.keywords = body.keywords.map(k => String(k).trim()).filter(Boolean);
     }
     store.savePerson(next);
+    sync?.reassign();
     return changed(c, next);
   });
 
@@ -147,7 +150,7 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
 
   // Trips
   const checkTrip = (t: Partial<Trip>): Omit<Trip, 'id'> => {
-    req(t.personId && store.person(t.personId), 'Choose who is traveling.');
+    req(t.personId && (t.personId === EVERYONE || store.person(t.personId)), 'Choose who is traveling.');
     req(t.city && t.city.trim(), 'Enter the city.');
     req(t.tz && validTz(t.tz), 'Choose the time zone there.');
     req(t.startsOn && DATE.test(t.startsOn) && t.endsOn && DATE.test(t.endsOn), 'Choose the dates.');
@@ -167,6 +170,60 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
   app.delete('/api/trips/:id', c => {
     if (!store.deleteTrip(c.req.param('id'))) return c.json({ error: 'No such trip.' }, 404);
     return changed(c, { ok: true });
+  });
+
+  // Calendar accounts (iCloud) and their calendars
+  const calendarsBody = () => ({
+    accounts: store.accounts(),
+    calendars: store.calendarSources().map(({ ctag: _c, syncedFrom: _s, ...pub }) => pub),
+  });
+  const needSync = () => {
+    if (!sync) throw new BadRequest('Calendar sync isn’t available on this server.');
+    return sync;
+  };
+
+  app.get('/api/calendars', c => c.json(calendarsBody()));
+
+  app.post('/api/calendar-accounts', async c => {
+    const body = await c.req.json<{ personId?: string; username?: string; password?: string }>();
+    req(body.personId && store.person(body.personId), 'Choose whose account this is.');
+    req(body.username && /.+@.+/.test(body.username), 'Enter the Apple ID email address.');
+    req(body.password && body.password.replace(/\s+/g, '').length >= 8, 'Enter the app-specific password (it looks like abcd-efgh-ijkl-mnop).');
+    try {
+      await needSync().addAccount({ personId: body.personId, username: body.username, password: body.password });
+    } catch (err) {
+      if (err instanceof BadRequest) throw err;
+      throw new BadRequest((err as Error).message);
+    }
+    return changed(c, calendarsBody(), 201);
+  });
+
+  app.delete('/api/calendar-accounts/:id', c => {
+    if (!store.deleteAccount(c.req.param('id'))) return c.json({ error: 'No such account.' }, 404);
+    return changed(c, calendarsBody());
+  });
+
+  app.post('/api/calendar-accounts/:id/sync', async c => {
+    if (!store.account(c.req.param('id'))) return c.json({ error: 'No such account.' }, 404);
+    await needSync().syncAccount(c.req.param('id'), { force: true });
+    return changed(c, calendarsBody());
+  });
+
+  app.put('/api/calendars/:id', async c => {
+    const source = store.calendarSource(c.req.param('id'));
+    if (!source) return c.json({ error: 'No such calendar.' }, 404);
+    const body = await c.req.json<{ enabled?: boolean; personId?: string | null }>();
+    req(body.personId === undefined || body.personId === null || store.person(body.personId), 'No such person.');
+    const next = {
+      ...source,
+      enabled: body.enabled ?? source.enabled,
+      personId: body.personId === undefined ? source.personId : body.personId,
+    };
+    // Turning a calendar back on needs a fresh download.
+    store.saveSource(next.enabled && !source.enabled ? { ...next, ctag: null } : next);
+    if (next.personId !== source.personId) sync?.reassign();
+    if (next.enabled !== source.enabled && sync) await sync.syncAccount(source.accountId);
+    return changed(c, calendarsBody());
   });
 
   // Settings

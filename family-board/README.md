@@ -6,8 +6,8 @@ parent is traveling. See [PLAN.md](PLAN.md) for the design and roadmap.
 
 **Status:** phases 1 and 2 are built: the wall display, the phone view, people and
 colors, kid activities with school-calendar skips, one-time changes, snow days, trips,
-and backups. Google and iCloud calendar sync (phase 3) is next. Until then, events
-come from sample data.
+and backups. Phase 3 has started: iCloud calendars sync (read-only). Google calendars
+and automatic trip detection are next.
 
 ## Screens
 
@@ -17,7 +17,7 @@ come from sample data.
 | `/` on a phone | Today's agenda, with day-by-day navigation and per-person filters |
 | `/#/kids` | Yes or no for each kid activity today, with the next date |
 | `/#/activities` | Add and edit activities; cancel, move or add a note to one date |
-| `/#/settings` | Names, colors and emoji; snow days; trips; display settings; sample data |
+| `/#/settings` | Names, colors and emoji; calendars; snow days; trips; display settings; sample data |
 | `/#/wall` | Forces the wall layout on any screen |
 
 ## Develop
@@ -50,7 +50,25 @@ npm run build && npm start
 
 Environment variables: `PORT` (8710), `DATA_DIR` (`.data`), `BACKUP_DIR`
 (`$DATA_DIR/backups`), `DEMO_DATA` (`0` skips sample data on first run), `WEATHER`
-(`0` turns off weather requests).
+(`0` turns off weather requests), `SYNC_MINUTES` (10), `CALDAV_URL` (iCloud; point it
+at another CalDAV server for testing), `SECRET_KEY` (base64, 32 bytes; otherwise a key
+is generated into `$DATA_DIR/secret.key`).
+
+## Connecting iCloud calendars
+
+In Settings → Calendars, each person connects their Apple ID once with an
+app-specific password (appleid.apple.com → Sign-In and Security → App-Specific
+Passwords). The board lists the account's calendars, and for each you choose whether
+to show it and whose column it goes to. A calendar named like "Family" or "Shared"
+starts in the Family row, where events go to whoever the title names.
+
+- The board only reads calendars. It never changes anything in iCloud.
+- Passwords are encrypted with the key in `secret.key` in the data folder. Keep that
+  file with the database. A restored database without its key can't sync until each
+  account is connected again.
+- The same event on two calendars (an invitation, or the shared calendar seen from
+  both accounts) shows once, in every column it belongs to.
+- If a sync fails or is over an hour old, the wall and phones show a notice.
 
 ## Install on ZimaOS
 

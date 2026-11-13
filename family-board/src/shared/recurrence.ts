@@ -2,8 +2,9 @@
  *  dated occurrences, and answers "is it on today, and when is it next?". */
 
 import { RRule, Weekday } from 'rrule';
-import type {
-  Activity, ActivityAnswer, ActivityException, Occurrence, SchoolDay, SchoolYear,
+import {
+  EVERYONE, type Activity, type ActivityAnswer, type ActivityException, type Occurrence,
+  type SchoolDay, type SchoolYear, type Trip,
 } from './types';
 import { addDays, formatDate, parseDate, shortDate, formatTime } from './dates';
 
@@ -12,6 +13,8 @@ export interface ScheduleContext {
   schoolYear: SchoolYear | null;
   /** Exceptions for any activity; filtered by activityId here. */
   exceptions: ActivityException[];
+  /** While someone is away (or everyone is), their activities don't happen. */
+  trips: Trip[];
 }
 
 export function indexSchoolDays(days: SchoolDay[]): Map<string, SchoolDay[]> {
@@ -21,9 +24,14 @@ export function indexSchoolDays(days: SchoolDay[]): Map<string, SchoolDay[]> {
 }
 
 export function makeContext(
-  schoolDays: SchoolDay[], schoolYear: SchoolYear | null, exceptions: ActivityException[],
+  schoolDays: SchoolDay[], schoolYear: SchoolYear | null, exceptions: ActivityException[], trips: Trip[] = [],
 ): ScheduleContext {
-  return { schoolDays: indexSchoolDays(schoolDays), schoolYear, exceptions };
+  return { schoolDays: indexSchoolDays(schoolDays), schoolYear, exceptions, trips };
+}
+
+/** The trip that takes this person away on this date, if any. */
+export function tripOn(personId: string, date: string, trips: Trip[]): Trip | null {
+  return trips.find(t => (t.personId === personId || t.personId === EVERYONE) && t.startsOn <= date && date <= t.endsOn) ?? null;
 }
 
 /** Whether there's no school or early release on a date, with the reason. */
@@ -98,8 +106,12 @@ export function occurrencesFor(
         occ.movedFrom = date;
         occ.note = move.note || `Time changed from ${formatTime(activity.startTime)}`;
       }
+      const trip = move ? null : tripOn(activity.personId, date, ctx.trips);
       const school = schoolStatus(date, ctx);
-      if (school && activity.skipOn.includes(school.kind) && !move) {
+      if (trip) {
+        occ.status = 'skipped';
+        occ.reason = `Away in ${trip.city}`;
+      } else if (school && activity.skipOn.includes(school.kind) && !move) {
         occ.status = 'skipped';
         occ.reason = school.label;
       }

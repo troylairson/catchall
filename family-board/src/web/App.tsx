@@ -61,6 +61,9 @@ export function App() {
   return (
     <div className="phone">
       {error && <div className="notice warn">Can’t reach the server. Changes won’t save until it’s back.</div>}
+      {board.syncProblems.map(p => (
+        <a key={p.name} className="notice warn" href="#/settings">Calendar sync paused for {p.name}: {p.message} Fix it in Settings.</a>
+      ))}
       <main>{page}</main>
       <nav className="tabbar" aria-label="Sections">
         {TABS.map(([path, label]) => (
