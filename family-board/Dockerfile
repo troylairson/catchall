@@ -1,10 +1,12 @@
-# Build: install, test, and bundle the web app and server.
-FROM node:22-alpine AS build
+# Build once, natively on the build machine. The output is plain JavaScript with no
+# native modules, so the same dist works on amd64 and arm64. Tests run in CI before
+# the image is built.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npm test && npm run build
+RUN npm run build
 
 # Run: the bundled server needs only Node and the dist folder.
 FROM node:22-alpine
