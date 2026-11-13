@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { Board, Person } from '../../shared/types';
-import { dateRange, dayOfMonth, shortDate, weekdayName } from '../../shared/dates';
+import { addDays, dateRange, dayOfMonth, monthName, shortDate, startOfWeek, weekdayName } from '../../shared/dates';
+import { useBoard } from '../api';
 import { activeTrip, colorVar, familyTrip, itemsFor, personalTrip, type DayItem } from '../lib';
 import { Avatar } from './Avatar';
 
@@ -19,7 +21,44 @@ function Chip({ item, person }: { item: DayItem; person?: Person }) {
   );
 }
 
+function weekLabel(offset: number): string {
+  if (offset === 0) return 'This week';
+  if (offset === 1) return 'Next week';
+  if (offset === -1) return 'Last week';
+  return offset > 0 ? `In ${offset} weeks` : `${-offset} weeks ago`;
+}
+
+function rangeLabel(from: string, to: string): string {
+  const sameMonth = monthName(from) === monthName(to);
+  return `${monthName(from, true)} ${dayOfMonth(from)} – ${sameMonth ? '' : `${monthName(to, true)} `}${dayOfMonth(to)}`;
+}
+
+/** The week grid with arrows to page through weeks. Starts on the current week. */
 export function WeekView({ board }: { board: Board }) {
+  const [offset, setOffset] = useState(0);
+  const from = addDays(startOfWeek(board.today), offset * 7);
+  const to = addDays(from, 6);
+  const other = useBoard({ from, to });
+  // The current week is already loaded; other weeks load on demand.
+  const shown = offset === 0 ? board : other.board && other.board.from === from ? other.board : null;
+
+  return (
+    <div className="week-page">
+      <div className="week-nav">
+        <button className="icon-btn" onClick={() => setOffset(o => o - 1)} aria-label="Previous week">‹</button>
+        <div className="week-nav-label">
+          <b>{weekLabel(offset)}</b>
+          <span className="muted">{rangeLabel(from, to)}</span>
+        </div>
+        <button className="icon-btn" onClick={() => setOffset(o => o + 1)} aria-label="Next week">›</button>
+        {offset !== 0 && <button className="link-btn" onClick={() => setOffset(0)}>Back to this week</button>}
+      </div>
+      {shown ? <WeekGrid board={shown} /> : <p className="empty">{other.error ?? 'Loading…'}</p>}
+    </div>
+  );
+}
+
+function WeekGrid({ board }: { board: Board }) {
   const days = dateRange(board.from, board.to);
   const hasFamily = days.some(d => itemsFor(board, d, null).length > 0 || familyTrip(board, d));
   const rows: Array<Person | null> = [...board.people, ...(hasFamily ? [null] : [])];
