@@ -15,11 +15,13 @@ export function mentions(title: string, person: Person): boolean {
   return person.keywords.some(k => k.trim() && lower.includes(k.trim().toLowerCase()));
 }
 
-/** A personal calendar's events go to its owner. A family calendar's events go to
- *  whoever the title names, or to the whole family when it names no one. */
+/** An event goes to whoever its title names ("Lincoln Chess" goes to Lincoln, wherever
+ *  it's saved). Otherwise it goes to the calendar's owner, or to the whole family for a
+ *  Family calendar. */
 export function assignPeople(title: string, calendarPersonId: string | null, people: Person[]): string[] {
-  if (calendarPersonId) return [calendarPersonId];
-  return people.filter(p => mentions(title, p)).map(p => p.id);
+  const named = people.filter(p => mentions(title, p)).map(p => p.id);
+  if (named.length) return named;
+  return calendarPersonId ? [calendarPersonId] : [];
 }
 
 function key(e: CalendarEvent): string {

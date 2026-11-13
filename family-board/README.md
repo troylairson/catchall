@@ -6,8 +6,8 @@ parent is traveling. See [PLAN.md](PLAN.md) for the design and roadmap.
 
 **Status:** phases 1 and 2 are built: the wall display, the phone view, people and
 colors, kid activities with school-calendar skips, one-time changes, snow days, trips,
-and backups. Phase 3 has started: iCloud calendars sync (read-only). Google calendars
-and automatic trip detection are next.
+and backups. Phase 3: iCloud and Google calendars sync (read-only). Automatic trip
+detection is next.
 
 ## Screens
 
@@ -60,7 +60,12 @@ In Settings → Calendars, each person connects their Apple ID once with an
 app-specific password (appleid.apple.com → Sign-In and Security → App-Specific
 Passwords). The board lists the account's calendars, and for each you choose whether
 to show it and whose column it goes to. A calendar named like "Family" or "Shared"
-starts in the Family row, where events go to whoever the title names.
+starts in the Family row.
+
+An event whose title names someone, or uses one of their keywords from Settings, goes
+to that person's column whichever calendar it's on: "Lincoln Chess" on Troy's calendar
+shows in Lincoln's column. Events that name no one go to the calendar's owner, or to
+the Family row.
 
 - The board only reads calendars. It never changes anything in iCloud.
 - Passwords are encrypted with the key in `secret.key` in the data folder. Keep that
@@ -69,6 +74,32 @@ starts in the Family row, where events go to whoever the title names.
 - The same event on two calendars (an invitation, or the shared calendar seen from
   both accounts) shows once, in every column it belongs to.
 - If a sync fails or is over an hour old, the wall and phones show a notice.
+
+## Connecting Google calendars
+
+Google needs a one-time setup in Google Cloud (free), then each person signs in once.
+
+1. At console.cloud.google.com, create a project named "Family Board".
+2. APIs & Services → Library → **Google Calendar API** → Enable.
+3. Google Auth Platform → Get started: app name "Family Board", your email, audience
+   **External**.
+4. Audience → **Publish app**. Apps left in "Testing" have their sign-ins expire every
+   7 days. Google won't verify a personal app like this, and doesn't need to: you'll see
+   an "app isn't verified" screen during sign-in, and Advanced → Go to Family Board
+   continues.
+5. Clients → Create client → type **Desktop app**. In Family Board, go to Settings →
+   Calendars → Add Google and enter the client ID and secret.
+
+Then, for each person: **Sign in with Google** opens Google's sign-in. After you
+approve, the tab goes to `http://127.0.0.1:8710/?…` and fails to load. That's expected:
+copy the whole address from that tab and paste it into Family Board. Doing it this way
+means the box needs no public HTTPS address.
+
+- Calendars you own start shown. Holidays, birthdays and other people's read-only
+  calendars start hidden; turn them on in Settings if you want them.
+- Events you declined are left out.
+- The refresh token and client secret are encrypted with the same `secret.key` as the
+  iCloud passwords.
 
 ## Install on ZimaOS
 

@@ -111,7 +111,7 @@ export interface CalendarEvent {
 /** A connected calendar account. The password never leaves the server. */
 export interface CalendarAccount {
   id: string;
-  kind: 'icloud';
+  kind: 'icloud' | 'google';
   /** Whose account this is; their calendars go to their column by default. */
   personId: string;
   username: string;

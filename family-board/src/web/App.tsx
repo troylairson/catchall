@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useBoard } from './api';
+import { api, useBoard } from './api';
 import { Wall } from './components/Wall';
 import { PhoneAgenda } from './components/Phone';
 import { KidsView } from './components/KidsView';
@@ -32,7 +32,20 @@ const TABS = [
   ['', 'Today'], ['kids', 'Kids'], ['activities', 'Activities'], ['settings', 'Settings'],
 ] as const;
 
+/** If Google redirected straight back here (only when the browser runs on the box itself),
+ *  finish the sign-in without the copy-and-paste step. */
+function useGoogleReturn() {
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (!q.get('state') || !(q.get('code') || q.get('error'))) return;
+    const pasted = window.location.href;
+    window.history.replaceState(null, '', '/#/settings');
+    api('POST', '/api/google/finish', { response: pasted }).catch(() => { /* Settings shows account status */ });
+  }, []);
+}
+
 export function App() {
+  useGoogleReturn();
   const route = useHash();
   const wide = useIsWide();
   const { board, error, loadedAt } = useBoard();
