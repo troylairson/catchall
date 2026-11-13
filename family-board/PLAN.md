@@ -20,22 +20,23 @@ edit them in the usual calendar apps.
 ## Architecture
 
 ```
- ┌───────────────┐  ┌──────────────┐
- │ Wall display  │  │ Phones (PWA) │
- │ (kiosk browser)│  │              │
- └──────┬────────┘  └──────┬───────┘
+ ┌────────────────┐      ┌──────────────────────┐
+ │ Wall display   │      │ Phones (PWA)         │
+ │ (home Wi-Fi)   │      │ home Wi-Fi or        │
+ │                │      │ Tailscale when away  │
+ └──────┬─────────┘      └──────┬───────────────┘
         │ HTTPS + Server-Sent Events (live updates)
- ┌──────▼──────────────────▼───────┐
- │ family-board server (one        │
- │ container)                      │
+ ┌──────▼───────────────────────▼──┐
+ │ ZimaOS box at home              │
+ │ family-board container          │
  │  • serves the React app         │
  │  • JSON API                     │
  │  • sync jobs every 5–10 min ────┼──► Google Calendar API
  │  • SQLite database              │──► iCloud CalDAV
- └──────────────┬──────────────────┘──► School calendar (ICS)
-                │                   ──► Open-Meteo (weather)
+ └──────────────┬──────────────────┘──► Open-Meteo (weather)
+                │
                 ▼
-        nightly backup (Litestream → object storage)
+   nightly backup to a ZimaOS folder (optionally off-site)
 ```
 
 One container runs everything: the web app, the API and the sync jobs. That means one
@@ -63,10 +64,9 @@ browser can't make directly (CORS).
 | Weather | Open-Meteo | Free, no API key |
 | Tests | Vitest | Same as `guitar-coach/`; the recurrence rules need thorough tests |
 
-**Browser support:** old tablets can run old browsers. The build will use
-`@vitejs/plugin-legacy` and avoid newer CSS such as `color-mix()`. Color tints are
-computed in JavaScript from each person's base color instead. Before building the
-display shell, we need the tablet's exact model and OS version.
+**Browser support:** current browsers only (the last two versions of Safari, Chrome and
+Firefox). If an older device ends up as the display, we fix what breaks then.
+`@vitejs/plugin-legacy` is the escape hatch if needed.
 
 ## Data model
 
@@ -100,13 +100,22 @@ For a single date, the occurrence logic is:
 This is a pure function, `occurrencesFor(activity, range, schoolDays, exceptions)`,
 with a test for every tricky case.
 
-**Assigning events to people.** Each synced calendar has a default person. That can be
-overridden per event by:
+**Assigning events to people.** There are three calendars:
 
+| Calendar | Default lane |
+|---|---|
+| Troy's personal calendar | Troy |
+| Alexia's personal calendar | Alexia, including her work travel |
+| Shared family calendar | Family, unless the event names someone |
+
+The kids don't have their own calendars. Events on the shared calendar are assigned
+to a person by:
+
+- a name in the title ("Lincoln dentist", "Everly – Harper's party")
+- an emoji set per person in settings ("🏀" → Lincoln)
 - an attendee email matching a person
-- a name or emoji in the title ("Lincoln dentist", "🏀")
 
-Unmatched events go to a "Family" lane.
+An event that names both kids goes in both lanes.
 
 **Travel detection.** An event is marked as travel when:
 
@@ -122,7 +131,27 @@ phone, in case detection misses one. Its time zone comes from the event or the l
 |---|---|---|
 | Google | OAuth (read-only `calendar.readonly` scope), per-calendar `syncToken` incremental sync every 5 min | Each of you connects your own account once. **Gotcha:** an OAuth app left in "Testing" mode has refresh tokens that expire after 7 days. Set the Google Cloud app to "In production" (unverified is fine for family use) so tokens don't expire. |
 | iCloud | CalDAV via `tsdav` with an app-specific password (appleid.apple.com), polled every 10 min using ctag/etag to skip unchanged calendars | The password stays valid until revoked or the Apple ID password changes. Stored encrypted at rest. |
-| School / teams | ICS URL polled hourly | If the school only publishes a PDF, we import it once into `school_day` (I can extract the dates). Team apps such as TeamSnap and GameChanger usually offer an ICS feed. |
+| Teams | ICS URL polled hourly | Team apps such as TeamSnap and GameChanger usually offer an ICS feed. |
+
+### School calendar (Green Local Schools)
+
+The district publishes its calendar as an image-style PDF, with no subscribable feed
+found so far. The 2026–27 dates are transcribed into
+[`data/school-calendar-2026-27.json`](data/school-calendar-2026-27.json) and seeded
+into `school_day` on first run. Lincoln goes to Green Middle School and Everly to
+Green Elementary, and both follow the same district calendar.
+
+- **No early-release days are listed this year**, so `skip_on` will mostly be
+  `no_school` (breaks, holidays and teacher PD days).
+- **Snow days** are announced on the day through ParentSquare, so there's no feed to
+  read. One tap on the phone adds "Snow day" as a `no_school` day. That cancels that
+  day's school-linked activities on the board and notes that make-up days may push
+  the last day of school later.
+- **Days outside the school year** (summer) count as no school, so school-only
+  activities pause automatically. Summer activities just don't set `skip_on`.
+- **Next school year:** when the district posts the 2027–28 calendar, I transcribe it
+  the same way. If the district website's calendar page offers an iCal subscription,
+  we switch to that.
 
 **Health checks.** Each calendar records `last_synced_at` and `last_error`. If any source
 is stale for more than an hour, the display shows a small "Calendar sync paused"
@@ -152,17 +181,40 @@ hex value. The app works out light and dark tints and checks text contrast again
 them, so any color a kid picks stays readable. The weather location, dimming hours and
 default view per time of day are also settings.
 
-## Hosting
+## Hosting on ZimaOS
 
-| Option | Cost | Upkeep | Notes |
-|---|---|---|---|
-| **Fly.io (recommended)** | about $3–5/month | Lowest | The same Docker image runs anywhere. HTTPS, a persistent volume for SQLite, and automatic restarts. |
-| Home server or the Raspberry Pi itself | $0 | Medium | Good for tinkering, but you look after the power, updates and remote access (Tailscale) yourself. |
+The app runs as a single Docker container on the ZimaOS box at home.
 
-The app is a Docker image either way, so moving between them takes minutes.
-Backups: Litestream streams the SQLite file to Cloudflare R2 or S3 continuously, which
-costs pennies. Deploys run from GitHub Actions on push to `main`, mirroring the
-existing Pages workflow.
+- **Install:** ZimaOS can install a custom app from a `docker-compose.yml`. The repo
+  ships one that pulls the image from GitHub Container Registry
+  (`ghcr.io/troylairson/family-board`). A GitHub Actions workflow builds the image for
+  amd64 and arm64 on every push to `main`.
+- **Updates:** a Watchtower container checks the registry nightly and restarts the app
+  on a new image. Merging to `main` is the whole deploy. If you'd rather update by
+  hand, use the update button in ZimaOS instead.
+- **Data:** SQLite on a bind mount at `/DATA/AppData/family-board/`. A nightly job
+  writes a consistent copy (`sqlite3 .backup`) to `/DATA/Backup/family-board/` and keeps
+  14 days. ZimaOS's own backup can copy that folder to another drive, and an off-site
+  copy (Litestream to Cloudflare R2) is optional.
+- **Secrets:** Google client credentials, the iCloud app-specific password and the
+  encryption key go in an `.env` file next to the compose file. They're never
+  committed.
+
+### Reaching it from phones and setting up Google sign-in
+
+- **At home:** the display and phones use the local address, for example
+  `http://zima.local:8710`.
+- **Away from home:** Tailscale, which has a ZimaOS app. Install Tailscale on each
+  phone and the board works anywhere, with no ports open to the internet.
+  `tailscale serve` gives the box an HTTPS name (`https://<box>.<tailnet>.ts.net`).
+  That name is needed for installing the PWA on phones and for Google sign-in.
+- **Google sign-in redirect:** Google only redirects back to an HTTPS address or
+  `localhost`. The Tailscale HTTPS name should work as the redirect address. If
+  Google rejects it, a one-time fallback is to connect Google from a laptop through
+  a `localhost` redirect. Either way the refresh token is stored on the server, so
+  this happens once per account.
+- **If the box or internet goes down:** the display keeps showing the last data it
+  received, with a "Last updated 2:10 PM" note, instead of a blank screen.
 
 ## Repository layout
 
@@ -173,8 +225,9 @@ family-board/
   shared/                 # types, recurrence engine (occurrencesFor), color utils
   server/                 # Hono API, sync jobs, Drizzle schema + migrations
   web/                    # React + Vite PWA (display + phone layouts)
+  data/                   # school calendar transcriptions
   Dockerfile
-  fly.toml
+  docker-compose.yml      # for ZimaOS: app + Watchtower
 ```
 
 ## Build phases
@@ -182,12 +235,13 @@ family-board/
 Each phase ends with something usable on the actual wall.
 
 1. **Skeleton and display shell.** Repo setup, server, SQLite, people with editable
-   colors, and the Today, Week and Idle layouts filled with seed data. Deploy to Fly
-   and run it on the tablet in kiosk mode to confirm the old browser copes.
+   colors, and the Today, Week and Idle layouts filled with seed data. Build the image,
+   install it on ZimaOS, and open it full-screen on the display.
 2. **Kid activities.** This solves the biggest pain first, without any external
    calendars. Includes the activity editor on the phone (presets such as "Every Tue &
-   Thu", "2nd & 4th Thu" and "Custom"), exceptions, school calendar import with
-   automatic skips, and the Kids view with yes or no answers and the next date.
+   Thu", "2nd & 4th Thu" and "Custom"), exceptions, the Green Local Schools calendar
+   with automatic skips, the snow-day button, and the Kids view with yes or no answers
+   and the next date.
 3. **Calendar sync.** Google OAuth and iCloud CalDAV, event-to-person rules, merging
    into Today and Week, travel detection, away mode, and sync health alerts.
 4. **Polish.** Weather, night dimming, QR pairing, the phone agenda and filters, and
@@ -195,15 +249,20 @@ Each phase ends with something usable on the actual wall.
 5. **Later, optional.** Plain-English quick add (an LLM call that turns a sentence into
    an activity change for you to confirm), writing back to Google, then Lists and Meals.
 
+## Decisions made
+
+- Hosting: the ZimaOS box at home, with Tailscale for phones away from home.
+- Browsers: current browsers only.
+- Calendars: Troy's personal, Alexia's personal (including work travel), and a
+  shared family calendar.
+- School: Green Local Schools 2026–27, transcribed into `data/`.
+- Version 1 leaves out Lists and Meals. Each person's color can be customized.
+
 ## Open questions
 
-1. **The tablet's model and OS version**, or what would drive the monitor. This
-   decides browser support and kiosk setup.
-2. **Fly.io or a home server?** The recommendation is Fly.io for the least upkeep.
-3. **Which calendars belong to whom?** For example, Troy's Google calendar, Alexia's
-   iCloud calendar, and a shared family calendar.
-4. **Where does Alexia's work travel show up?** Her personal calendar, or only a work
-   (Outlook) calendar? An Outlook ICS share link would work as a read-only feed.
-5. **Do Lincoln's or Everly's teams use an app** (TeamSnap, GameChanger, etc.) that
+1. **Which service hosts each of the three calendars?** Google or iCloud for Troy's,
+   Alexia's and the shared one. This decides which sync gets built first.
+2. **Do Lincoln's or Everly's teams use an app** (TeamSnap, GameChanger, etc.) that
    offers a calendar feed?
-6. **The school calendar link or PDF.** Troy is finding this.
+3. **Which device will be the display?** It doesn't block anything now, but it
+   decides the kiosk setup in phase 4.
