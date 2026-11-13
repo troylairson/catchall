@@ -100,13 +100,22 @@ For a single date, the occurrence logic is:
 This is a pure function, `occurrencesFor(activity, range, schoolDays, exceptions)`,
 with a test for every tricky case.
 
-**Assigning events to people.** There are three calendars:
+**Assigning events to people.** Troy and Alexia each have one iCloud calendar and one
+Google calendar, and there's a shared family calendar:
 
-| Calendar | Default lane |
-|---|---|
-| Troy's personal calendar | Troy |
-| Alexia's personal calendar | Alexia, including her work travel |
-| Shared family calendar | Family, unless the event names someone |
+| Calendar | Source | Default lane |
+|---|---|---|
+| Troy (iCloud) | iCloud | Troy |
+| Troy (Google) | Google | Troy |
+| Alexia (iCloud) | iCloud | Alexia, including her work travel |
+| Alexia (Google) | Google | Alexia, including her work travel |
+| Shared family calendar | to be confirmed | Family, unless the event names someone |
+
+Each person's two calendars merge into their one column. Some events will show up
+on more than one calendar, such as an invitation from Alexia's Google calendar to
+Troy's, or a family event copied to a personal calendar. These are merged into a
+single event by iCalendar UID first, and by matching title and start time second. A
+merged event shows in every column it belongs to, but only once in each.
 
 The kids don't have their own calendars. Events on the shared calendar are assigned
 to a person by:
@@ -253,16 +262,19 @@ Each phase ends with something usable on the actual wall.
 
 - Hosting: the ZimaOS box at home, with Tailscale for phones away from home.
 - Browsers: current browsers only.
-- Calendars: Troy's personal, Alexia's personal (including work travel), and a
-  shared family calendar.
+- Calendars: Troy and Alexia each have an iCloud and a Google calendar, plus a shared
+  family calendar. Alexia's work travel is on her personal calendars. Phase 3 builds
+  both the Google and the iCloud sync.
 - School: Green Local Schools 2026–27, transcribed into `data/`.
 - Version 1 leaves out Lists and Meals. Each person's color can be customized.
 
 ## Open questions
 
-1. **Which service hosts each of the three calendars?** Google or iCloud for Troy's,
-   Alexia's and the shared one. This decides which sync gets built first.
+1. **Is the shared family calendar on iCloud or Google?**
 2. **Do Lincoln's or Everly's teams use an app** (TeamSnap, GameChanger, etc.) that
    offers a calendar feed?
-3. **Which device will be the display?** It doesn't block anything now, but it
+3. **Do your iCloud and Google calendars hold different kinds of events** (for
+   example, one for personal events and one for work)? If so, the board could label
+   them or let you hide one.
+4. **Which device will be the display?** It doesn't block anything now, but it
    decides the kiosk setup in phase 4.
