@@ -45,7 +45,7 @@ export function syncProblems(store: Store, now: Date): SyncProblem[] {
   const hourAgo = new Date(now.getTime() - 60 * 60_000).toISOString();
   for (const a of store.accounts()) {
     const owner = store.person(a.personId)?.name ?? 'Someone';
-    const name = `${owner}’s iCloud`;
+    const name = `${owner}’s ${a.kind === 'google' ? 'Google' : 'iCloud'}`;
     if (a.lastError) out.push({ name, message: a.lastError });
     else if (!a.lastSyncedAt || a.lastSyncedAt < hourAgo) out.push({ name, message: 'Hasn’t synced in over an hour.' });
     else {

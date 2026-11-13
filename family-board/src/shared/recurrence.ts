@@ -1,7 +1,15 @@
 /** Turns activity rules ("Tue & Thu, skip days with no school, ends Dec 17") into
  *  dated occurrences, and answers "is it on today, and when is it next?". */
 
-import { RRule, Weekday } from 'rrule';
+import * as rruleModule from 'rrule';
+import type { Weekday } from 'rrule';
+
+// rrule ships CommonJS for Node and ESM for bundlers. Node's ESM loader can't see its
+// named exports, so fall back to the CommonJS default export there.
+const { RRule } = ((rruleModule as { RRule?: unknown }).RRule
+  ? rruleModule
+  : (rruleModule as unknown as { default: typeof rruleModule }).default) as typeof rruleModule;
+type RRule = InstanceType<typeof RRule>;
 import {
   EVERYONE, type Activity, type ActivityAnswer, type ActivityException, type Occurrence,
   type SchoolDay, type SchoolYear, type Trip,

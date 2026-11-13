@@ -255,7 +255,9 @@ Each phase ends with something usable on the actual wall.
    into Today and Week, travel detection, away mode, and sync health alerts.
    - ✅ iCloud CalDAV (read-only), per-calendar owner and show/hide, name and keyword
      assignment, duplicate merging, sync health notices.
-   - Next: automatic trip detection, then Google.
+   - ✅ Google Calendar (read-only) via a Desktop-app OAuth client with PKCE and a
+     paste-back loopback redirect, so no public HTTPS address is needed.
+   - Next: automatic trip detection.
 4. **Polish.** QR pairing and phone sign-in, and kiosk setup on the chosen display.
    Weather, night dimming, the phone agenda and filters, and backups were built early,
    in phases 1 and 2.

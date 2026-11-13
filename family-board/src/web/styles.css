@@ -262,3 +262,5 @@ button.danger { color: var(--danger); border-color: color-mix(in srgb, var(--dan
 .trip-wide { --c: var(--family); flex: none; grid-template-columns: auto auto minmax(120px, 1fr) auto; align-items: center; column-gap: 18px; padding: 10px 16px; }
 .trip-wide .trip-city { font-size: 22px; }
 @media (max-width: 1000px) { .trip-wide { grid-template-columns: minmax(0, 1fr); } }
+
+.add-row button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }

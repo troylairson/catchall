@@ -4,12 +4,8 @@ import { createDAVClient, type DAVCalendar } from 'tsdav';
 
 export const ICLOUD_CALDAV_URL = 'https://caldav.icloud.com';
 
-export interface RemoteCalendar {
-  url: string;
-  name: string;
-  color: string;
-  ctag: string | null;
-}
+import type { RemoteCalendar } from './providers';
+export type { RemoteCalendar } from './providers';
 
 export interface CalDavClient {
   listCalendars(): Promise<RemoteCalendar[]>;
@@ -24,8 +20,8 @@ export function friendlyError(err: unknown): string {
   const msg = String((err as Error)?.message ?? err);
   const status = msg.match(/\b(40[13])\b/)?.[1];
   if (status || /unauthori[sz]ed|invalid credentials|forbidden/i.test(msg)) {
-    return 'Apple didn’t accept the email or password. Check that the email is the Apple ID itself '
-      + '(Settings → your name on an iPhone shows it), and use an app-specific password from appleid.apple.com, '
+    return 'Apple didn’t accept the email or password. Use the Apple ID’s primary email (on an iPhone, '
+      + 'Settings → your name shows it; other addresses on the account won’t work), and an app-specific password from appleid.apple.com, '
       + `not your regular password. (iCloud answered ${status ?? '401'}.)`;
   }
   if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT|fetch failed|network|timeout/i.test(msg)) {

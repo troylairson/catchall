@@ -198,6 +198,43 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
     return changed(c, calendarsBody(), 201);
   });
 
+  // Google: the client from Google Cloud, then a sign-in per account
+  app.get('/api/google/config', c => {
+    const client = sync?.googleClient() ?? null;
+    return c.json({ configured: !!client, clientId: client?.clientId ?? '' });
+  });
+
+  app.put('/api/google/config', async c => {
+    const body = await c.req.json<{ clientId?: string; clientSecret?: string }>();
+    req(body.clientId && /\.apps\.googleusercontent\.com$/.test(body.clientId.trim()), 'The client ID ends in .apps.googleusercontent.com. Copy it from Google Cloud → Clients.');
+    req(body.clientSecret && body.clientSecret.trim().length >= 10, 'Paste the client secret from the same Google Cloud client.');
+    needSync().saveGoogleClient(body.clientId, body.clientSecret);
+    return c.json({ configured: true, clientId: body.clientId.trim() });
+  });
+
+  app.post('/api/google/start', async c => {
+    const body = await c.req.json<{ personId?: string }>();
+    req(body.personId && store.person(body.personId), 'Choose whose account this is.');
+    try {
+      return c.json({ url: needSync().startGoogleSignIn(body.personId) });
+    } catch (err) {
+      if (err instanceof BadRequest) throw err;
+      throw new BadRequest((err as Error).message);
+    }
+  });
+
+  app.post('/api/google/finish', async c => {
+    const body = await c.req.json<{ response?: string }>();
+    req(body.response && body.response.trim(), 'Paste the address from the tab Google sent you to.');
+    try {
+      await needSync().finishGoogleSignIn(body.response);
+    } catch (err) {
+      if (err instanceof BadRequest) throw err;
+      throw new BadRequest((err as Error).message);
+    }
+    return changed(c, calendarsBody(), 201);
+  });
+
   app.delete('/api/calendar-accounts/:id', c => {
     if (!store.deleteAccount(c.req.param('id'))) return c.json({ error: 'No such account.' }, 404);
     return changed(c, calendarsBody());
