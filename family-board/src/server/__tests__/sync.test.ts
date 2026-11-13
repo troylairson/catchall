@@ -60,6 +60,11 @@ beforeEach(() => {
 });
 
 describe('connecting an account', () => {
+  it('lowercases an app-specific password a keyboard capitalized', async () => {
+    await sync.addAccount({ personId: 'troy', username: 'troy@example.com', password: 'Abcd-efgh-ijkl-mnop' });
+    expect(store.accounts()).toHaveLength(1);
+  });
+
   it('rejects a wrong password with advice', async () => {
     await expect(sync.addAccount({ personId: 'troy', username: 'troy@example.com', password: 'wrong-password' }))
       .rejects.toThrow(/app-specific password/);

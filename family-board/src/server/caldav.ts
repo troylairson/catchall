@@ -22,8 +22,11 @@ export type Connect = (serverUrl: string, username: string, password: string) =>
 /** Turns network and authentication failures into messages a person can act on. */
 export function friendlyError(err: unknown): string {
   const msg = String((err as Error)?.message ?? err);
-  if (/401|unauthori[sz]ed|invalid credentials|forbidden|403/i.test(msg)) {
-    return 'Apple didn’t accept the email or password. Use an app-specific password from appleid.apple.com, not your regular Apple ID password.';
+  const status = msg.match(/\b(40[13])\b/)?.[1];
+  if (status || /unauthori[sz]ed|invalid credentials|forbidden/i.test(msg)) {
+    return 'Apple didn’t accept the email or password. Check that the email is the Apple ID itself '
+      + '(Settings → your name on an iPhone shows it), and use an app-specific password from appleid.apple.com, '
+      + `not your regular password. (iCloud answered ${status ?? '401'}.)`;
   }
   if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT|fetch failed|network|timeout/i.test(msg)) {
     return 'Couldn’t reach iCloud. Check that the box is online; it will try again in a few minutes.';
