@@ -54,7 +54,7 @@ browser can't make directly (CORS).
 | Language | TypeScript throughout | Same as `guitar-coach/`; types shared between client and server |
 | Frontend | React + Vite, installable PWA | Matches the existing repo; one codebase for the display and phones |
 | Server | Node 22 + [Hono](https://hono.dev) | Small, fast, easy to read |
-| Database | SQLite + Drizzle ORM | A single file, no database server, typed queries and migrations |
+| Database | SQLite via Node's built-in `node:sqlite` | A single file, no database server, and no native module to compile for the ZimaOS box |
 | Live updates | Server-Sent Events | Simpler than WebSockets; the display reconnects automatically |
 | Recurrence | `rrule` (RFC 5545) | The same rule format calendars already use; handles "2nd & 4th Thu", UNTIL and EXDATE |
 | Dates and time zones | `date-fns` + `date-fns-tz` | Needed for showing Alexia's events in both time zones |
@@ -109,7 +109,7 @@ Google calendar, and there's a shared family calendar:
 | Troy (Google) | Google | Troy |
 | Alexia (iCloud) | iCloud | Alexia, including her work travel |
 | Alexia (Google) | Google | Alexia, including her work travel |
-| Shared family calendar | to be confirmed | Family, unless the event names someone |
+| Shared family calendar | iCloud | Family, unless the event names someone |
 
 Each person's two calendars merge into their one column. Some events will show up
 on more than one calendar, such as an invitation from Alexia's Google calendar to
@@ -229,11 +229,11 @@ The app runs as a single Docker container on the ZimaOS box at home.
 
 ```
 family-board/
-  PLAN.md
-  package.json            # npm workspaces
-  shared/                 # types, recurrence engine (occurrencesFor), color utils
-  server/                 # Hono API, sync jobs, Drizzle schema + migrations
-  web/                    # React + Vite PWA (display + phone layouts)
+  PLAN.md, README.md
+  package.json            # one package; the server build bundles its dependencies
+  src/shared/             # types, dates, colors, recurrence engine (occurrencesFor)
+  src/server/             # Hono API, node:sqlite storage, seed data, weather, backups
+  src/web/                # React + Vite PWA (wall and phone layouts)
   data/                   # school calendar transcriptions
   Dockerfile
   docker-compose.yml      # for ZimaOS: app + Watchtower
@@ -243,18 +243,19 @@ family-board/
 
 Each phase ends with something usable on the actual wall.
 
-1. **Skeleton and display shell.** Repo setup, server, SQLite, people with editable
+1. ✅ **Skeleton and display shell.** Repo setup, server, SQLite, people with editable
    colors, and the Today, Week and Idle layouts filled with seed data. Build the image,
    install it on ZimaOS, and open it full-screen on the display.
-2. **Kid activities.** This solves the biggest pain first, without any external
+2. ✅ **Kid activities.** This solves the biggest pain first, without any external
    calendars. Includes the activity editor on the phone (presets such as "Every Tue &
    Thu", "2nd & 4th Thu" and "Custom"), exceptions, the Green Local Schools calendar
    with automatic skips, the snow-day button, and the Kids view with yes or no answers
    and the next date.
 3. **Calendar sync.** Google OAuth and iCloud CalDAV, event-to-person rules, merging
    into Today and Week, travel detection, away mode, and sync health alerts.
-4. **Polish.** Weather, night dimming, QR pairing, the phone agenda and filters, and
-   backups.
+4. **Polish.** QR pairing and phone sign-in, and kiosk setup on the chosen display.
+   Weather, night dimming, the phone agenda and filters, and backups were built early,
+   in phases 1 and 2.
 5. **Later, optional.** Plain-English quick add (an LLM call that turns a sentence into
    an activity change for you to confirm), writing back to Google, then Lists and Meals.
 
@@ -263,18 +264,16 @@ Each phase ends with something usable on the actual wall.
 - Hosting: the ZimaOS box at home, with Tailscale for phones away from home.
 - Browsers: current browsers only.
 - Calendars: Troy and Alexia each have an iCloud and a Google calendar, plus a shared
-  family calendar. Alexia's work travel is on her personal calendars. Phase 3 builds
-  both the Google and the iCloud sync.
+  family calendar on iCloud. Both of each person's calendars are personal; which one
+  an event lands on depends only on where it was created, so they merge into one
+  column with no labels. Alexia's work travel is on her personal calendars. Phase 3
+  builds both the Google and the iCloud sync.
 - School: Green Local Schools 2026–27, transcribed into `data/`.
 - Version 1 leaves out Lists and Meals. Each person's color can be customized.
 
 ## Open questions
 
-1. **Is the shared family calendar on iCloud or Google?**
-2. **Do Lincoln's or Everly's teams use an app** (TeamSnap, GameChanger, etc.) that
+1. **Do Lincoln's or Everly's teams use an app** (TeamSnap, GameChanger, etc.) that
    offers a calendar feed?
-3. **Do your iCloud and Google calendars hold different kinds of events** (for
-   example, one for personal events and one for work)? If so, the board could label
-   them or let you hide one.
-4. **Which device will be the display?** It doesn't block anything now, but it
+2. **Which device will be the display?** It doesn't block anything now, but it
    decides the kiosk setup in phase 4.

@@ -1,0 +1,33 @@
+# Family Board for ZimaOS. In the ZimaOS dashboard: App Store → Custom Install →
+# Import, then paste this file. Data lives in /DATA/AppData/family-board and nightly
+# backups in /DATA/Backup/family-board.
+name: family-board
+
+services:
+  app:
+    image: ghcr.io/troylairson/family-board:latest
+    container_name: family-board
+    restart: unless-stopped
+    ports:
+      - "8710:8710"
+    environment:
+      TZ: America/New_York
+      # Set to 0 before the first start to skip the sample events and activities.
+      DEMO_DATA: "1"
+    volumes:
+      - /DATA/AppData/family-board:/data
+      - /DATA/Backup/family-board:/backups
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  # Checks for a new Family Board image at 4 AM and restarts the app on it.
+  # Only containers labeled above are updated.
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: family-board-updater
+    restart: unless-stopped
+    environment:
+      TZ: America/New_York
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --label-enable --cleanup --schedule "0 0 4 * * *"
