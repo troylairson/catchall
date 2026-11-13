@@ -2,8 +2,8 @@ import { useState } from 'react';
 import type { Board } from '../../shared/types';
 import { addDays, dayOfMonth, monthName, startOfWeek, weekdayName } from '../../shared/dates';
 import { useBoard, useNow } from '../api';
-import { activeTrip, colorVar, itemsOn, nowMinutes, personById } from '../lib';
-import { Avatar } from './Avatar';
+import { awayOn, colorVar, itemsOn, nowMinutes, personById } from '../lib';
+import { Avatar, FamilyMark } from './Avatar';
 
 export function PhoneAgenda({ today }: { today: string }) {
   const [day, setDay] = useState(today);
@@ -17,7 +17,7 @@ export function PhoneAgenda({ today }: { today: string }) {
   const { minutes, date: nowDate } = nowMinutes(board, now);
   const items = itemsOn(board, day).filter(i =>
     i.personIds.length === 0 ? !hidden.has('family') : i.personIds.some(id => !hidden.has(id)));
-  const away = board.people.filter(p => activeTrip(board, p.id, day));
+  const away = awayOn(board, day);
   const noSchool = board.schoolDays.find(d => d.date === day && d.kind === 'no_school');
   const toggle = (id: string) => setHidden(h => {
     const n = new Set(h);
@@ -37,15 +37,12 @@ export function PhoneAgenda({ today }: { today: string }) {
       </header>
       {day !== today && <button className="link-btn" onClick={() => setDay(today)}>Back to today</button>}
 
-      {away.map(p => {
-        const trip = activeTrip(board, p.id, day)!;
-        return (
-          <div key={p.id} className="phone-away" style={colorVar(p)}>
-            <Avatar person={p} size="sm" away />
-            <span><b>{p.name} is in {trip.city}</b>{trip.returnNote && ` · ${trip.returnNote}`}</span>
-          </div>
-        );
-      })}
+      {away.map(({ person, trip }) => (
+        <div key={trip.id} className="phone-away" style={colorVar(person ?? undefined)}>
+          {person ? <Avatar person={person} size="sm" away /> : <FamilyMark size="sm" />}
+          <span><b>{person ? `${person.name} is in ${trip.city}` : `Family trip to ${trip.city}`}</b>{trip.returnNote && ` · ${trip.returnNote}`}</span>
+        </div>
+      ))}
       {noSchool && <div className="phone-school">🏫 No school · {noSchool.label}</div>}
 
       <div className="filters" role="group" aria-label="Show people">

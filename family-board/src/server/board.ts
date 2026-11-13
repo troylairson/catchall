@@ -17,7 +17,8 @@ export function buildBoard(
   const schoolDays = store.schoolDays();
   const schoolYear = store.schoolYear();
   const exceptions = store.exceptions();
-  const ctx = makeContext(schoolDays, schoolYear, exceptions);
+  const allTrips = store.trips();
+  const ctx = makeContext(schoolDays, schoolYear, exceptions, allTrips);
   const activities = store.activities();
   const enabled = new Set(store.calendarSources().filter(c => c.enabled).map(c => c.id));
 
@@ -30,7 +31,7 @@ export function buildBoard(
     answers: activities.map(a => answerFor(a, today, ctx)),
     schoolDays: schoolDays.filter(d => d.date >= from && d.date <= addDays(to, 60)),
     schoolYear,
-    trips: store.trips().filter(t => t.endsOn >= from && t.startsOn <= to),
+    trips: allTrips.filter(t => t.endsOn >= from && t.startsOn <= to),
     exceptions: exceptions.filter(e => e.date >= addDays(today, -7)),
     weather: opts.weather ?? null,
     hasDemoData: store.hasDemoData(),

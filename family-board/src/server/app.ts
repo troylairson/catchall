@@ -6,7 +6,7 @@ import { loadDemoData } from './seed';
 import { getWeather } from './weather';
 import type { CalendarSync } from './sync';
 import { isHexColor } from '../shared/colors';
-import type { Activity, ActivityException, Settings, Trip } from '../shared/types';
+import { EVERYONE, type Activity, type ActivityException, type Settings, type Trip } from '../shared/types';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -150,7 +150,7 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
 
   // Trips
   const checkTrip = (t: Partial<Trip>): Omit<Trip, 'id'> => {
-    req(t.personId && store.person(t.personId), 'Choose who is traveling.');
+    req(t.personId && (t.personId === EVERYONE || store.person(t.personId)), 'Choose who is traveling.');
     req(t.city && t.city.trim(), 'Enter the city.');
     req(t.tz && validTz(t.tz), 'Choose the time zone there.');
     req(t.startsOn && DATE.test(t.startsOn) && t.endsOn && DATE.test(t.endsOn), 'Choose the dates.');

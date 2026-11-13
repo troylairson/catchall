@@ -23,3 +23,12 @@ export function Sleeps({ total, done }: { total: number; done: number }) {
     </span>
   );
 }
+
+/** Stands in for an avatar when the whole family is meant. */
+export function FamilyMark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+  return (
+    <span className={`avatar avatar-${size} family-mark`} aria-hidden="true">
+      ✈
+    </span>
+  );
+}

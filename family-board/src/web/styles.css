@@ -256,3 +256,9 @@ button.danger { color: var(--danger); border-color: color-mix(in srgb, var(--dan
 .steps code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
 .phone > a.notice { text-decoration: none; margin: 10px 16px 0; display: block; }
 @media (max-width: 480px) { .cal-list li { grid-template-columns: minmax(0, 1fr); } }
+
+/* Family trips */
+.family-mark { background: var(--family); color: var(--surface); font-size: .7em; }
+.trip-wide { --c: var(--family); flex: none; grid-template-columns: auto auto minmax(120px, 1fr) auto; align-items: center; column-gap: 18px; padding: 10px 16px; }
+.trip-wide .trip-city { font-size: 22px; }
+@media (max-width: 1000px) { .trip-wide { grid-template-columns: minmax(0, 1fr); } }

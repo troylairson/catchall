@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Board } from '../../shared/types';
 import { dayOfMonth, formatTime, monthName, weekdayName } from '../../shared/dates';
-import { activeTrip, isDimTime, itemsOn, nowMinutes, personById, tripProgress } from '../lib';
+import { awayOn, isDimTime, itemsOn, nowMinutes, personById, tripProgress } from '../lib';
 import { useNow } from '../api';
-import { Avatar, Sleeps } from './Avatar';
+import { Avatar, FamilyMark, Sleeps } from './Avatar';
 import { TodayView } from './TodayView';
 import { WeekView } from './WeekView';
 import { KidsView } from './KidsView';
@@ -17,18 +17,17 @@ function clock(board: Board, now: Date) {
 }
 
 function AwayBanners({ board }: { board: Board }) {
-  const away = board.people
-    .map(p => ({ p, trip: activeTrip(board, p.id, board.today) }))
-    .filter(x => x.trip);
+  const away = awayOn(board, board.today);
   if (!away.length) return null;
   return (
     <div className="away-list">
-      {away.map(({ p, trip }) => {
-        const prog = tripProgress(trip!, board.today);
+      {away.map(({ person, trip }) => {
+        const prog = tripProgress(trip, board.today);
+        const home = prog.left === 0 ? 'home tonight' : `home ${weekdayName(trip.endsOn)}`;
         return (
-          <div key={p.id} className="away-banner" style={{ '--c': p.color } as React.CSSProperties}>
-            <Avatar person={p} size="sm" away />
-            <span><b>{p.name} is in {trip!.city}</b> · {prog.left === 0 ? 'home tonight' : `home ${weekdayName(trip!.endsOn)}`}</span>
+          <div key={trip.id} className="away-banner" style={{ '--c': person?.color ?? 'var(--family)' } as React.CSSProperties}>
+            {person ? <Avatar person={person} size="sm" away /> : <FamilyMark size="sm" />}
+            <span><b>{person ? `${person.name} is in ${trip.city}` : `Family trip to ${trip.city}`}</b> · {home}</span>
             <Sleeps total={prog.total} done={prog.done} />
           </div>
         );
@@ -43,7 +42,7 @@ function IdleScreen({ board, now, onWake }: { board: Board; now: Date; onWake: (
   const upcoming = itemsOn(board, board.today)
     .filter(i => !i.allDay && i.status === 'on' && i.minutes >= minutes)
     .slice(0, 4);
-  const away = board.people.filter(p => activeTrip(board, p.id, board.today));
+  const away = awayOn(board, board.today);
   return (
     <button className="idle" onClick={onWake} aria-label="Open the board">
       <div className="idle-main">
@@ -68,13 +67,12 @@ function IdleScreen({ board, now, onWake }: { board: Board; now: Date; onWake: (
         })}
         {away.length > 0 && <>
           <h2>Away</h2>
-          {away.map(p => {
-            const trip = activeTrip(board, p.id, board.today)!;
+          {away.map(({ person, trip }) => {
             const prog = tripProgress(trip, board.today);
             return (
-              <div key={p.id} className="idle-up" style={{ '--c': p.color } as React.CSSProperties}>
-                <Avatar person={p} size="sm" away />
-                <span>{p.name} is in {trip.city}</span>
+              <div key={trip.id} className="idle-up" style={{ '--c': person?.color ?? 'var(--family)' } as React.CSSProperties}>
+                {person ? <Avatar person={person} size="sm" away /> : <FamilyMark size="sm" />}
+                <span>{person ? `${person.name} is in ${trip.city}` : `Everyone is in ${trip.city}`}</span>
                 <Sleeps total={prog.total} done={prog.done} />
               </div>
             );

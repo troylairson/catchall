@@ -138,8 +138,12 @@ export interface SyncProblem {
   message: string;
 }
 
+/** Trip.personId for a trip the whole family takes, such as a vacation. */
+export const EVERYONE = 'everyone';
+
 export interface Trip {
   id: string;
+  /** Who is away, or EVERYONE for the whole family. */
   personId: string;
   city: string;
   /** IANA time zone at the destination, e.g. "America/Denver". */
