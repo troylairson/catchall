@@ -5,6 +5,8 @@ import { addDays, shortDate } from '../../shared/dates';
 import { api } from '../api';
 import { Avatar } from './Avatar';
 import { CalendarsCard } from './Calendars';
+import { setThemeChoice, useThemeChoice, type ThemeChoice } from '../theme';
+import { formatTime } from '../../shared/dates';
 
 /** Shows a short status message after a save, or the server's explanation of a problem. */
 function useStatus() {
@@ -211,6 +213,28 @@ function SampleDataCard({ board }: { board: Board }) {
   );
 }
 
+function AppearanceCard({ board }: { board: Board }) {
+  const choice = useThemeChoice();
+  const options: Array<[ThemeChoice, string]> = [
+    ['auto', 'Match this device'], ['light', 'Light'], ['dark', 'Dark'], ['night', 'Dark at night'],
+  ];
+  return (
+    <section className="card">
+      <h2>Appearance</h2>
+      <p className="hint">
+        Applies to this screen only, so the wall and each phone can differ. “Dark at night” switches to dark from{' '}
+        {formatTime(board.settings.dimStart)} to {formatTime(board.settings.dimEnd)}, the wall’s dimming hours.
+      </p>
+      <div className="segmented" role="radiogroup" aria-label="Appearance">
+        {options.map(([value, label]) => (
+          <button key={value} role="radio" aria-checked={choice === value} aria-pressed={choice === value}
+            onClick={() => setThemeChoice(value)}>{label}</button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function SettingsPage({ board }: { board: Board }) {
   return (
     <div className="phone-page settings">
@@ -220,6 +244,7 @@ export function SettingsPage({ board }: { board: Board }) {
       <CalendarsCard board={board} />
       <SchoolCard board={board} />
       <TripsCard board={board} />
+      <AppearanceCard board={board} />
       <DisplayCard settings={board.settings} />
       <SampleDataCard board={board} />
     </div>

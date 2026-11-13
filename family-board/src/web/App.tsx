@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, useBoard } from './api';
+import { useApplyTheme } from './theme';
 import { Wall } from './components/Wall';
 import { PhoneAgenda } from './components/Phone';
 import { KidsView } from './components/KidsView';
@@ -49,6 +50,7 @@ export function App() {
   const route = useHash();
   const wide = useIsWide();
   const { board, error, loadedAt } = useBoard();
+  useApplyTheme(board);
 
   if (!board) {
     return (

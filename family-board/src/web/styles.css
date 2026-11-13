@@ -8,11 +8,18 @@
   --body: "Figtree", "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) { :root {
+/* Dark tokens apply when the device prefers dark (unless this device chose Light in
+   Settings), or when this device chose Dark. data-theme is set by theme.ts. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0E1117; --surface: #181E29; --surface-2: #202837; --ink: #E7EBF2; --muted: #98A3B5; --line: #2D3748;
   --accent: #8C9BFF; --on-accent: #0E1117; --yes: #5CCB93; --no: #7E8899; --warn: #F0A65A; --danger: #FF8A80;
   --family: #A795F0; color-scheme: dark;
 } }
+:root[data-theme="dark"] {
+  --bg: #0E1117; --surface: #181E29; --surface-2: #202837; --ink: #E7EBF2; --muted: #98A3B5; --line: #2D3748;
+  --accent: #8C9BFF; --on-accent: #0E1117; --yes: #5CCB93; --no: #7E8899; --warn: #F0A65A; --danger: #FF8A80;
+  --family: #A795F0; color-scheme: dark;
+}
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
