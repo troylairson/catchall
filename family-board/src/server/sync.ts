@@ -37,10 +37,14 @@ export class CalendarSync {
   /** Checks the password by listing calendars, then saves the account and syncs it. */
   async addAccount(input: { personId: string; username: string; password: string }): Promise<CalendarAccount> {
     const username = input.username.trim();
-    const password = input.password.replace(/\s+/g, '');
+    let password = input.password.replace(/\s+/g, '');
+    // App-specific passwords are lowercase, but phone keyboards sometimes capitalize
+    // the first letter.
+    if (/^[a-z]{4}-?[a-z]{4}-?[a-z]{4}-?[a-z]{4}$/i.test(password)) password = password.toLowerCase();
     try {
       await (await this.connect(this.serverUrl, username, password)).listCalendars();
     } catch (err) {
+      console.warn(`iCloud connect failed for ${username}: ${(err as Error)?.message ?? err}`);
       throw new Error(friendlyError(err));
     }
     const existing = this.store.accounts().find(a => a.username.toLowerCase() === username.toLowerCase());
@@ -131,6 +135,7 @@ export class CalendarSync {
       this.store.updateAccountStatus(accountId, { lastSyncedAt: stamp(), lastError: null });
       if (account.lastError) changed = true;
     } catch (err) {
+      console.warn(`iCloud sync failed for ${account.username}: ${(err as Error)?.message ?? err}`);
       this.store.updateAccountStatus(accountId, { lastError: friendlyError(err) });
       changed = true;
     }

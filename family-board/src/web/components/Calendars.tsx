@@ -116,9 +116,9 @@ function ConnectForm({ board, onDone }: { board: Board; onDone: (d: CalendarsDat
           {board.people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select></div>
       <div className="field"><label htmlFor="ic-user">Apple ID email</label>
-        <input id="ic-user" type="email" autoComplete="off" value={username} onChange={e => setUsername(e.target.value)} /></div>
+        <input id="ic-user" type="email" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={username} onChange={e => setUsername(e.target.value)} /></div>
       <div className="field"><label htmlFor="ic-pass">App-specific password</label>
-        <input id="ic-pass" type="password" autoComplete="new-password" value={password} placeholder="abcd-efgh-ijkl-mnop" onChange={e => setPassword(e.target.value)} /></div>
+        <input id="ic-pass" type="password" autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={password} placeholder="abcd-efgh-ijkl-mnop" onChange={e => setPassword(e.target.value)} /></div>
       {error && <p className="status error span-all" role="alert">{error}</p>}
       <div className="row span-all">
         <button className="primary" disabled={busy}>{busy ? 'Connecting… (this can take a minute)' : 'Connect'}</button>
