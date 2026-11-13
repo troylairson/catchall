@@ -171,6 +171,8 @@ export function Wall({ board, stale, loadedAt }: { board: Board; stale: boolean;
         ))}
         <span className="dock-sep" />
         <button onClick={() => setIdle(true)}>Clock</button>
+        <a className="dock-link" href="#/activities">Activities</a>
+        <a className="dock-link" href="#/settings">Settings</a>
       </nav>
 
       {idle && <IdleScreen board={board} now={now} onWake={() => { lastTouch.current = Date.now(); setIdle(false); }} />}

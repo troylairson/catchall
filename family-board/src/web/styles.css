@@ -60,6 +60,7 @@ button { cursor: pointer; }
 .dock button { border: 0; background: transparent; padding: 12px 26px; border-radius: 14px; font-size: 18px; font-weight: 600; color: var(--muted); }
 .dock button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
 .dock-sep { width: 1px; height: 28px; background: var(--line); margin: 0 6px; }
+.dock-link { padding: 12px 18px; border-radius: 14px; font-size: 16px; font-weight: 600; color: var(--muted); text-decoration: none; }
 
 /* Today */
 .today { display: flex; flex-direction: column; min-height: 0; flex: 1; gap: 12px; }
