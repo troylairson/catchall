@@ -23,6 +23,8 @@ const sync = new CalendarSync(store, Secrets.fromDataDir(dataDir), {
   serverUrl: process.env.CALDAV_URL,
   onChange: () => bus.emit(),
 });
+// Apply the current naming rules to events already synced (unchanged calendars aren't re-read).
+sync.reassign();
 sync.start(Number(process.env.SYNC_MINUTES ?? 10));
 
 const app = createApp({ store, bus, sync, weather: process.env.WEATHER !== '0' });

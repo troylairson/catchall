@@ -148,6 +148,16 @@ describe('syncing', () => {
     expect((await board()).events).toHaveLength(0);
   });
 
+  it('puts a kid’s event from a parent’s personal calendar in the kid’s column', async () => {
+    const home = cloud.calendars['troy@example.com'][0];
+    home.files.push(ics('t3', 'Lincoln Chess', '20261112T151500', '20261112T163000'));
+    home.ctag = '2';
+    await sync.syncAll();
+    expect((await board()).events.find(e => e.title === 'Lincoln Chess')?.personIds).toEqual(['lincoln']);
+    // Titles that name no one still go to the calendar's owner.
+    expect((await board()).events.find(e => e.title === 'Dentist')?.personIds).toEqual(['troy']);
+  });
+
   it('re-assigns events when a keyword is added', async () => {
     const app = createApp({ store, now: () => NOW, weather: false, sync });
     await app.request('/api/people/everly', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ keywords: ['grandma'] }) });
@@ -184,6 +194,9 @@ describe('assigning people', () => {
     expect(mentions('Lincolnshire trip', people[0])).toBe(false);
     expect(assignPeople('Lincoln and Everly: haircuts', null, people)).toEqual(['lincoln', 'everly']);
     expect(assignPeople('Anything', 'troy', people)).toEqual(['troy']);
+    // A name in the title wins, even on someone's personal calendar.
+    expect(assignPeople('Lincoln Chess', 'troy', people)).toEqual(['lincoln']);
+    expect(assignPeople('Grandma visits', null, people)).toEqual([]);
   });
 
   it('merges copies by title and start when UIDs differ', () => {

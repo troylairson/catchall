@@ -60,7 +60,12 @@ In Settings → Calendars, each person connects their Apple ID once with an
 app-specific password (appleid.apple.com → Sign-In and Security → App-Specific
 Passwords). The board lists the account's calendars, and for each you choose whether
 to show it and whose column it goes to. A calendar named like "Family" or "Shared"
-starts in the Family row, where events go to whoever the title names.
+starts in the Family row.
+
+An event whose title names someone, or uses one of their keywords from Settings, goes
+to that person's column whichever calendar it's on: "Lincoln Chess" on Troy's calendar
+shows in Lincoln's column. Events that name no one go to the calendar's owner, or to
+the Family row.
 
 - The board only reads calendars. It never changes anything in iCloud.
 - Passwords are encrypted with the key in `secret.key` in the data folder. Keep that

@@ -228,8 +228,9 @@ export function CalendarsCard({ board }: { board: Board }) {
     <section className="card" id="calendars">
       <h2>Calendars</h2>
       <p className="hint">
-        The board reads your iCloud and Google calendars; it never changes them. Personal calendars go to their owner’s column.
-        Events on a Family calendar go to whoever the title names (“Lincoln dentist”), or to the Family row.
+        The board reads your iCloud and Google calendars; it never changes them. An event whose title names someone
+        (“Lincoln Chess”) goes to that person’s column, whichever calendar it’s on. Other events go to the calendar’s owner,
+        or to the Family row for a Family calendar.
       </p>
       {error && <p className="status error">{error}</p>}
       {data?.accounts.map(a => (
