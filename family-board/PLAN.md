@@ -253,6 +253,9 @@ Each phase ends with something usable on the actual wall.
    and the next date.
 3. **Calendar sync.** Google OAuth and iCloud CalDAV, event-to-person rules, merging
    into Today and Week, travel detection, away mode, and sync health alerts.
+   - ✅ iCloud CalDAV (read-only), per-calendar owner and show/hide, name and keyword
+     assignment, duplicate merging, sync health notices.
+   - Next: automatic trip detection, then Google.
 4. **Polish.** QR pairing and phone sign-in, and kiosk setup on the chosen display.
    Weather, night dimming, the phone agenda and filters, and backups were built early,
    in phases 1 and 2.

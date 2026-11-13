@@ -5,7 +5,8 @@ import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite';
 import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import type {
-  Activity, ActivityException, CalendarEvent, Person, SchoolDay, SchoolYear, Settings, Trip,
+  Activity, ActivityException, CalendarAccount, CalendarEvent, CalendarSource, Person, SchoolDay,
+  SchoolYear, Settings, Trip,
 } from '../shared/types';
 
 const SCHEMA = `
@@ -36,6 +37,22 @@ CREATE TABLE IF NOT EXISTS setting (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS event_start ON event (start);
 `;
 
+/** Changes after the first release. Each runs once, in order, tracked by user_version. */
+const MIGRATIONS: string[] = [
+  // 1: the original schema above.
+  SCHEMA,
+  // 2: calendar sync.
+  `ALTER TABLE event ADD COLUMN externalUid TEXT NOT NULL DEFAULT '';
+   CREATE INDEX IF NOT EXISTS event_calendar ON event (calendarId);
+   CREATE TABLE IF NOT EXISTS calendarAccount (
+     id TEXT PRIMARY KEY, kind TEXT NOT NULL, personId TEXT NOT NULL, username TEXT NOT NULL,
+     passwordEnc TEXT NOT NULL, lastSyncedAt TEXT, lastError TEXT);
+   CREATE TABLE IF NOT EXISTS calendarSource (
+     id TEXT PRIMARY KEY, accountId TEXT NOT NULL, url TEXT NOT NULL, name TEXT NOT NULL,
+     color TEXT NOT NULL DEFAULT '', enabled INTEGER NOT NULL DEFAULT 1, personId TEXT,
+     ctag TEXT, syncedFrom TEXT, lastSyncedAt TEXT, lastError TEXT);`,
+];
+
 // Loaded through require because Vite and Vitest don't recognize node:sqlite yet.
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
 
@@ -43,7 +60,7 @@ type Row = Record<string, unknown>;
 type SqlValue = string | number | null;
 
 const JSON_FIELDS = new Set(['keywords', 'skipOn', 'personIds']);
-const BOOL_FIELDS = new Set(['allDay', 'demo']);
+const BOOL_FIELDS = new Set(['allDay', 'demo', 'enabled']);
 
 function encode(obj: object): Record<string, SqlValue> {
   const out: Record<string, SqlValue> = {};
@@ -82,7 +99,17 @@ export class Store {
   constructor(path: string) {
     this.db = new DatabaseSync(path);
     this.db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
-    this.db.exec(SCHEMA);
+    this.migrate();
+  }
+
+  private migrate(): void {
+    const version = Number((this.db.prepare('PRAGMA user_version').get() as Row).user_version);
+    for (let v = version; v < MIGRATIONS.length; v++) {
+      this.transaction(() => {
+        this.db.exec(MIGRATIONS[v]);
+        this.db.exec(`PRAGMA user_version = ${v + 1}`);
+      });
+    }
   }
 
   private all<T>(sql: string, params: Record<string, SqlValue> = {}): T[] {
@@ -173,6 +200,52 @@ export class Store {
     const full = { ...e, id: e.id ?? randomUUID(), demo: e.demo ?? false } as CalendarEvent;
     this.put('event', full);
     return full;
+  }
+
+  /** Replaces one calendar's events with a fresh copy from the server. */
+  replaceCalendarEvents(calendarId: string, events: Array<Omit<CalendarEvent, 'id'>>): void {
+    this.transaction(() => {
+      this.db.prepare('DELETE FROM event WHERE calendarId = :calendarId').run({ calendarId });
+      for (const e of events) this.saveEvent({ ...e, calendarId });
+    });
+  }
+  eventsForCalendar(calendarId: string): CalendarEvent[] {
+    return this.all<CalendarEvent>('SELECT * FROM event WHERE calendarId = :calendarId', { calendarId });
+  }
+  deleteCalendarEvents(calendarId: string): void {
+    this.db.prepare('DELETE FROM event WHERE calendarId = :calendarId').run({ calendarId });
+  }
+
+  // calendar accounts and their calendars
+  accounts(): CalendarAccount[] {
+    return this.all<CalendarAccount>('SELECT id, kind, personId, username, lastSyncedAt, lastError FROM calendarAccount ORDER BY personId, username');
+  }
+  account(id: string): (CalendarAccount & { passwordEnc: string }) | undefined {
+    return this.all<CalendarAccount & { passwordEnc: string }>('SELECT * FROM calendarAccount WHERE id = :id', { id })[0];
+  }
+  saveAccount(a: CalendarAccount & { passwordEnc: string }): void { this.put('calendarAccount', a); }
+  updateAccountStatus(id: string, status: { lastSyncedAt?: string | null; lastError: string | null }): void {
+    const a = this.account(id);
+    if (a) this.saveAccount({ ...a, ...status, lastSyncedAt: status.lastSyncedAt ?? a.lastSyncedAt });
+  }
+  deleteAccount(id: string): boolean {
+    let found = false;
+    this.transaction(() => {
+      for (const c of this.calendarSources(id)) this.deleteSource(c.id);
+      found = this.remove('calendarAccount', id);
+    });
+    return found;
+  }
+  calendarSources(accountId?: string): Array<CalendarSource & { ctag: string | null; syncedFrom: string | null }> {
+    return accountId
+      ? this.all('SELECT * FROM calendarSource WHERE accountId = :accountId ORDER BY name', { accountId })
+      : this.all('SELECT * FROM calendarSource ORDER BY name');
+  }
+  calendarSource(id: string) { return this.calendarSources().find(c => c.id === id); }
+  saveSource(c: CalendarSource & { ctag?: string | null; syncedFrom?: string | null }): void { this.put('calendarSource', c); }
+  deleteSource(id: string): void {
+    this.deleteCalendarEvents(id);
+    this.remove('calendarSource', id);
   }
 
   // trips

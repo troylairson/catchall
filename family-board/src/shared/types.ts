@@ -103,7 +103,39 @@ export interface CalendarEvent {
   notes: string;
   /** Empty means the event belongs to the whole family. */
   personIds: string[];
+  /** The UID from the source calendar, used to merge copies of one event. */
+  externalUid?: string;
   demo?: boolean;
+}
+
+/** A connected calendar account. The password never leaves the server. */
+export interface CalendarAccount {
+  id: string;
+  kind: 'icloud';
+  /** Whose account this is; their calendars go to their column by default. */
+  personId: string;
+  username: string;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+}
+
+/** One calendar inside an account, e.g. "Home" or "Family". */
+export interface CalendarSource {
+  id: string;
+  accountId: string;
+  url: string;
+  name: string;
+  color: string;
+  enabled: boolean;
+  /** Whose column its events go to; null means Family (assigned by names in titles). */
+  personId: string | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+}
+
+export interface SyncProblem {
+  name: string;
+  message: string;
 }
 
 export interface Trip {
@@ -153,4 +185,6 @@ export interface Board {
   exceptions: ActivityException[];
   weather: Weather | null;
   hasDemoData: boolean;
+  /** Calendars that failed or haven't synced in over an hour. */
+  syncProblems: SyncProblem[];
 }

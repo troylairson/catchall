@@ -150,8 +150,11 @@ export function Wall({ board, stale, loadedAt }: { board: Board; stale: boolean;
         </div>
       </header>
 
-      {(stale || board.hasDemoData) && (
+      {(stale || board.hasDemoData || board.syncProblems.length > 0) && (
         <div className="notices">
+          {board.syncProblems.map(p => (
+            <span key={p.name} className="notice warn">Calendar sync paused for {p.name}: {p.message}</span>
+          ))}
           {stale && <span className="notice warn">Can’t reach the server. Showing what it had at {loadedAt ? loadedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'last load'}.</span>}
           {board.hasDemoData && <span className="notice">Showing sample data. Remove it in Settings on your phone.</span>}
         </div>

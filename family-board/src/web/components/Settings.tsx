@@ -4,6 +4,7 @@ import { SWATCHES, colorWarning, isHexColor } from '../../shared/colors';
 import { addDays, shortDate } from '../../shared/dates';
 import { api } from '../api';
 import { Avatar } from './Avatar';
+import { CalendarsCard } from './Calendars';
 
 /** Shows a short status message after a save, or the server's explanation of a problem. */
 function useStatus() {
@@ -215,6 +216,7 @@ export function SettingsPage({ board }: { board: Board }) {
       <h1>Settings</h1>
       <h2 className="section-title">Family</h2>
       {board.people.map(p => <PersonCard key={p.id} person={p} />)}
+      <CalendarsCard board={board} />
       <SchoolCard board={board} />
       <TripsCard board={board} />
       <DisplayCard settings={board.settings} />
