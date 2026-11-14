@@ -7,8 +7,11 @@ import { Avatar, FamilyMark, Sleeps } from './Avatar';
 import { TodayView } from './TodayView';
 import { WeekView } from './WeekView';
 import { KidsView } from './KidsView';
+import { MealsView } from './Meals';
+import { ListsView } from './Lists';
 
-type View = 'today' | 'week' | 'kids';
+type View = 'today' | 'week' | 'kids' | 'meals' | 'lists';
+const VIEW_LABELS: Record<View, string> = { today: 'Today', week: 'Week', kids: 'Kids', meals: 'Meals', lists: 'Lists' };
 
 function clock(board: Board, now: Date) {
   const { minutes } = nowMinutes(board, now);
@@ -162,17 +165,18 @@ export function Wall({ board, stale, loadedAt }: { board: Board; stale: boolean;
         {view === 'today' && <TodayView board={board} now={now} />}
         {view === 'week' && <WeekView board={board} />}
         {view === 'kids' && <KidsView board={board} />}
+        {view === 'meals' && <MealsView board={board} />}
+        {view === 'lists' && <ListsView board={board} />}
       </main>
 
       <nav className="dock" aria-label="Board views">
-        {(['today', 'week', 'kids'] as View[]).map(v => (
+        {(Object.keys(VIEW_LABELS) as View[]).map(v => (
           <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>
-            {v === 'today' ? 'Today' : v === 'week' ? 'Week' : 'Kids'}
+            {VIEW_LABELS[v]}
           </button>
         ))}
         <span className="dock-sep" />
         <button onClick={() => setIdle(true)}>Clock</button>
-        <a className="dock-link" href="#/activities">Activities</a>
         <a className="dock-link" href="#/settings">Settings</a>
       </nav>
 

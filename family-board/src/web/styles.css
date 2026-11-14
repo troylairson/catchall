@@ -278,3 +278,65 @@ button.danger { color: var(--danger); border-color: color-mix(in srgb, var(--dan
 .week-nav { display: flex; align-items: center; gap: 12px; }
 .week-nav-label { display: flex; align-items: baseline; gap: 10px; min-width: 220px; justify-content: center; font-size: 18px; }
 .week-nav-label b { font-family: var(--display); font-size: 22px; }
+
+/* To-dos */
+.todo { display: flex; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; text-align: left; border: 0; background: transparent; padding: 6px 4px; min-height: 44px; border-radius: 10px; color: var(--ink); }
+.todo-box { width: 26px; height: 26px; flex: none; border-radius: 8px; border: 2px solid var(--c, var(--muted)); display: grid; place-items: center; font-weight: 800; font-size: 16px; color: var(--surface); }
+.todo.checked .todo-box { background: var(--c, var(--yes)); border-color: var(--c, var(--yes)); }
+.todo-text { display: grid; min-width: 0; }
+.todo-title { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.todo-detail { font-size: 13px; color: var(--muted); }
+.todo.checked .todo-title { text-decoration: line-through; color: var(--muted); }
+.ev-todo { background: color-mix(in srgb, var(--c) 8%, var(--surface)); border: 1.5px dashed color-mix(in srgb, var(--c) 45%, transparent); padding: 8px 10px; flex: none; }
+.fchip-todo { width: auto; min-height: 0; padding: 4px 12px 4px 6px; background: color-mix(in srgb, var(--family) 13%, var(--surface)); border-radius: 12px; --c: var(--family); }
+.fchip-todo .todo-box { width: 20px; height: 20px; font-size: 13px; border-radius: 6px; }
+.fchip-todo .todo-title { font-size: 16px; }
+.fchip.dinner { background: color-mix(in srgb, var(--warn) 13%, var(--surface)); }
+.agenda-todo { grid-template-columns: minmax(0, 1fr) auto; padding: 4px 12px 4px 8px; }
+.phone-dinner { display: block; padding: 10px 12px; border-radius: 12px; font-size: 15px; background: color-mix(in srgb, var(--warn) 13%, var(--surface)); color: var(--ink); text-decoration: none; }
+
+/* Lists */
+.lists { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 16px; align-items: start; overflow-y: auto; min-height: 0; }
+.phone-page .lists { grid-template-columns: minmax(0, 1fr); overflow: visible; }
+@media (max-width: 720px) { .lists { grid-template-columns: minmax(0, 1fr); } }
+.list-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+.list-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.list-head h2 { font-size: 24px; }
+.list-items { display: grid; gap: 2px; }
+.list-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; border-bottom: 1px solid var(--line); }
+.list-row:last-child { border-bottom: 0; }
+.icon-btn.small { width: 32px; height: 32px; font-size: 18px; color: var(--muted); }
+.add-item { display: grid; gap: 6px; }
+.add-item .row input { flex: 1; min-width: 0; }
+.add-more .field { min-width: 140px; }
+textarea { width: 100%; border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 9px 11px; font: inherit; color: inherit; resize: vertical; }
+
+/* Meals */
+.meals { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; }
+.dinner-list { display: grid; gap: 8px; }
+.dinner-row { display: grid; grid-template-columns: 110px minmax(0, 1fr) minmax(0, 220px); gap: 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+.dinner-row.today { border-color: var(--ink); box-shadow: inset 4px 0 0 var(--warn); }
+.dinner-day { display: grid; }
+.dinner-dow { font-family: var(--display); font-weight: 800; font-size: 20px; }
+.dinner-num { font-size: 13px; color: var(--muted); }
+.dinner-main { display: flex; gap: 10px; align-items: center; min-width: 0; flex-wrap: wrap; }
+.dinner-main input { flex: 1; min-width: 0; font-size: 18px; font-weight: 600; background: transparent; border-color: transparent; }
+.dinner-main input:hover, .dinner-main input:focus { background: var(--surface-2); border-color: var(--line); }
+.empty-day .dinner-main input { font-weight: 400; }
+.dinner-link { font-size: 14px; font-weight: 600; color: var(--accent); }
+.dinner-cook { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.meal-actions button { font-size: 15px; }
+.saved-meals { display: grid; gap: 8px; }
+.meal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.meal-item { width: 100%; display: grid; justify-content: stretch; justify-items: start; gap: 2px; text-align: left; }
+.meal-name { font-weight: 700; }
+.meal-editor { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+@media (max-width: 600px) {
+  .dinner-row { grid-template-columns: 74px minmax(0, 1fr); gap: 8px 10px; }
+  .dinner-cook { grid-column: 2; }
+  .dinner-dow { font-size: 17px; }
+}
+.wk-dinner { min-height: 0; font-size: 13px; font-weight: 600; padding: 8px; }
+.kids-page { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.kids-edit { align-self: flex-end; }
+.phone-page .kids-edit { align-self: flex-start; }

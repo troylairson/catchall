@@ -5,8 +5,8 @@ import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite';
 import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import type {
-  Activity, ActivityException, CalendarAccount, CalendarEvent, CalendarSource, Person, SchoolDay,
-  SchoolYear, Settings, Trip,
+  Activity, ActivityException, CalendarAccount, CalendarEvent, CalendarSource, Dinner, FamilyList,
+  ListItem, Meal, Person, SchoolDay, SchoolYear, Settings, Trip,
 } from '../shared/types';
 
 const SCHEMA = `
@@ -51,6 +51,19 @@ const MIGRATIONS: string[] = [
      id TEXT PRIMARY KEY, accountId TEXT NOT NULL, url TEXT NOT NULL, name TEXT NOT NULL,
      color TEXT NOT NULL DEFAULT '', enabled INTEGER NOT NULL DEFAULT 1, personId TEXT,
      ctag TEXT, syncedFrom TEXT, lastSyncedAt TEXT, lastError TEXT);`,
+  // 3: lists and dinners.
+  `CREATE TABLE IF NOT EXISTS familyList (
+     id TEXT PRIMARY KEY, name TEXT NOT NULL, icon TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL, sortOrder INTEGER NOT NULL);
+   INSERT OR IGNORE INTO familyList VALUES ('groceries', 'Groceries', '🛒', 'grocery', 0), ('family', 'Family to-do', '✅', 'todo', 1);
+   CREATE TABLE IF NOT EXISTS listItem (
+     id TEXT PRIMARY KEY, listId TEXT NOT NULL, text TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0,
+     personId TEXT, dueOn TEXT, createdAt TEXT NOT NULL, doneAt TEXT);
+   CREATE INDEX IF NOT EXISTS listItem_list ON listItem (listId);
+   CREATE TABLE IF NOT EXISTS meal (
+     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '',
+     ingredients TEXT NOT NULL DEFAULT '[]');
+   CREATE TABLE IF NOT EXISTS dinner (
+     date TEXT PRIMARY KEY, mealId TEXT, title TEXT NOT NULL, cookId TEXT, note TEXT NOT NULL DEFAULT '');`,
 ];
 
 // Loaded through require because Vite and Vitest don't recognize node:sqlite yet.
@@ -59,8 +72,8 @@ const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof
 type Row = Record<string, unknown>;
 type SqlValue = string | number | null;
 
-const JSON_FIELDS = new Set(['keywords', 'skipOn', 'personIds']);
-const BOOL_FIELDS = new Set(['allDay', 'demo', 'enabled']);
+const JSON_FIELDS = new Set(['keywords', 'skipOn', 'personIds', 'ingredients']);
+const BOOL_FIELDS = new Set(['allDay', 'demo', 'enabled', 'done']);
 
 function encode(obj: object): Record<string, SqlValue> {
   const out: Record<string, SqlValue> = {};
@@ -247,6 +260,48 @@ export class Store {
     this.deleteCalendarEvents(id);
     this.remove('calendarSource', id);
   }
+
+  // lists
+  lists(): FamilyList[] { return this.all<FamilyList>('SELECT * FROM familyList ORDER BY sortOrder'); }
+  /** Open items, plus items checked off in the last two days (shown faded until cleared). */
+  listItems(now: Date): ListItem[] {
+    const since = new Date(now.getTime() - 2 * 86_400_000).toISOString();
+    return this.all<ListItem>('SELECT * FROM listItem WHERE done = 0 OR doneAt >= :since ORDER BY createdAt', { since });
+  }
+  listItem(id: string): ListItem | undefined {
+    return this.all<ListItem>('SELECT * FROM listItem WHERE id = :id', { id })[0];
+  }
+  saveListItem(item: Omit<ListItem, 'id'> & { id?: string }): ListItem {
+    const full = { ...item, id: item.id ?? randomUUID() } as ListItem;
+    this.put('listItem', full);
+    return full;
+  }
+  deleteListItem(id: string): boolean { return this.remove('listItem', id); }
+  clearDone(listId: string): number {
+    return Number(this.db.prepare('DELETE FROM listItem WHERE listId = :listId AND done = 1').run({ listId }).changes);
+  }
+
+  // meals and dinners
+  meals(): Meal[] { return this.all<Meal>('SELECT * FROM meal ORDER BY name COLLATE NOCASE'); }
+  meal(id: string): Meal | undefined { return this.meals().find(m => m.id === id); }
+  mealByName(name: string): Meal | undefined {
+    return this.all<Meal>('SELECT * FROM meal WHERE name = :name COLLATE NOCASE', { name: name.trim() })[0];
+  }
+  saveMeal(m: Omit<Meal, 'id'> & { id?: string }): Meal {
+    const full = { ...m, id: m.id ?? randomUUID() } as Meal;
+    this.put('meal', full);
+    return full;
+  }
+  deleteMeal(id: string): boolean {
+    // Planned dinners keep their title; they just lose the link to the saved meal.
+    this.db.prepare('UPDATE dinner SET mealId = NULL WHERE mealId = :id').run({ id });
+    return this.remove('meal', id);
+  }
+  dinners(from: string, to: string): Dinner[] {
+    return this.all<Dinner>('SELECT * FROM dinner WHERE date >= :from AND date <= :to ORDER BY date', { from, to });
+  }
+  saveDinner(d: Dinner): void { this.put('dinner', d); }
+  deleteDinner(date: string): void { this.db.prepare('DELETE FROM dinner WHERE date = :date').run({ date }); }
 
   // trips
   trips(): Trip[] { return this.all<Trip>('SELECT * FROM trip ORDER BY startsOn'); }

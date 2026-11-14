@@ -133,6 +133,47 @@ export interface CalendarSource {
   lastError: string | null;
 }
 
+/** A shared list such as Groceries or Family to-do. */
+export interface FamilyList {
+  id: string;
+  name: string;
+  icon: string;
+  kind: 'grocery' | 'todo';
+  sortOrder: number;
+}
+
+export interface ListItem {
+  id: string;
+  listId: string;
+  text: string;
+  done: boolean;
+  /** Who it's for; shown with their color, and in their column on its due date. */
+  personId: string | null;
+  dueOn: string | null;
+  createdAt: string;
+  doneAt: string | null;
+}
+
+/** A saved meal the family makes, for quick planning. */
+export interface Meal {
+  id: string;
+  name: string;
+  url: string;
+  notes: string;
+  /** One per line in the editor; added to Groceries on request. */
+  ingredients: string[];
+}
+
+/** The dinner planned for one date. */
+export interface Dinner {
+  date: string;
+  /** Set when the dinner is one of the saved meals. */
+  mealId: string | null;
+  title: string;
+  cookId: string | null;
+  note: string;
+}
+
 export interface SyncProblem {
   name: string;
   message: string;
@@ -191,4 +232,9 @@ export interface Board {
   hasDemoData: boolean;
   /** Calendars that failed or haven't synced in over an hour. */
   syncProblems: SyncProblem[];
+  lists: FamilyList[];
+  items: ListItem[];
+  meals: Meal[];
+  /** Planned dinners in the range. */
+  dinners: Dinner[];
 }

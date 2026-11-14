@@ -1,9 +1,13 @@
 import type { Board, Person } from '../../shared/types';
 import { formatTime, shortDate } from '../../shared/dates';
-import { colorVar, familyTrip, itemsFor, nowMinutes, personalTrip, tripProgress, type DayItem } from '../lib';
+import { colorVar, dinnerOn, familyTrip, itemsFor, nowMinutes, personalTrip, personById, tripProgress, type DayItem } from '../lib';
 import { Avatar } from './Avatar';
+import { TodoCheck } from './TodoCheck';
 
 function ItemCard({ item, past, next, color }: { item: DayItem; past: boolean; next: boolean; color: React.CSSProperties }) {
+  if (item.kind === 'todo') {
+    return <TodoCheck itemId={item.itemId!} done={!!item.done} title={item.title} detail={item.timeLabel} className="ev-todo" style={color} />;
+  }
   const off = item.status !== 'on';
   return (
     <div className={`ev${past ? ' past' : ''}${next ? ' next' : ''}${off ? ' off' : ''}`} style={color}>
@@ -84,18 +88,23 @@ export function TodayView({ board, now }: { board: Board; now: Date }) {
   const family = itemsFor(board, board.today, null);
   const noSchool = board.schoolDays.find(d => d.date === board.today && d.kind !== 'info');
   const vacation = familyTrip(board, board.today);
+  const dinner = dinnerOn(board, board.today);
+  const cook = dinner?.cookId ? personById(board, dinner.cookId) : undefined;
   return (
     <div className="today">
       {vacation && <TripCard board={board} tripId={vacation.id} wide />}
-      {(family.length > 0 || noSchool) && (
+      {(family.length > 0 || noSchool || dinner) && (
         <div className="family-strip">
           <span className="eyebrow">Everyone</span>
+          {dinner && <span className="fchip dinner">🍽 Dinner: {dinner.title}{cook && <small>{cook.name} cooking</small>}</span>}
           {noSchool && <span className="fchip school">🏫 {noSchool.kind === 'no_school' ? 'No school' : 'Early release'} <small>{noSchool.label}</small></span>}
-          {family.map(i => (
-            <span key={i.key} className="fchip">
-              {i.title}{!i.allDay && <small>{i.timeLabel}</small>}
-            </span>
-          ))}
+          {family.map(i => i.kind === 'todo'
+            ? <TodoCheck key={i.key} itemId={i.itemId!} done={!!i.done} title={i.title} className="fchip-todo" />
+            : (
+              <span key={i.key} className="fchip">
+                {i.title}{!i.allDay && <small>{i.timeLabel}</small>}
+              </span>
+            ))}
         </div>
       )}
       <div className="cols" style={{ '--n': board.people.length } as React.CSSProperties}>

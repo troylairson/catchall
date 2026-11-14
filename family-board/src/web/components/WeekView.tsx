@@ -111,6 +111,15 @@ function WeekGrid({ board }: { board: Board }) {
           </div>
         );
       })}
+      {board.dinners.length > 0 && (
+        <div className="wk-row">
+          <div className="wk-person"><span className="family-label">🍽 Dinner</span></div>
+          {days.map(d => {
+            const dinner = board.dinners.find(x => x.date === d);
+            return <div key={d} className={`wk-cell wk-dinner${d === board.today ? ' today' : ''}`}>{dinner?.title ?? ''}</div>;
+          })}
+        </div>
+      )}
     </div>
   );
 }

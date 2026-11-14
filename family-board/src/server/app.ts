@@ -4,6 +4,7 @@ import type { Store } from './store';
 import { buildBoard } from './board';
 import { loadDemoData } from './seed';
 import { getWeather } from './weather';
+import { addDays } from '../shared/dates';
 import type { CalendarSync } from './sync';
 import { isHexColor } from '../shared/colors';
 import { EVERYONE, type Activity, type ActivityException, type Settings, type Trip } from '../shared/types';
@@ -261,6 +262,140 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
     if (next.personId !== source.personId) sync?.reassign();
     if (next.enabled !== source.enabled && sync) await sync.syncAccount(source.accountId);
     return changed(c, calendarsBody());
+  });
+
+  // Lists
+  const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const nowIso = () => now().toISOString();
+
+  /** Adds an item unless the same text is already open on that list. */
+  const addItem = (listId: string, text: string, personId: string | null = null, dueOn: string | null = null) => {
+    const existing = store.listItems(now()).find(i => i.listId === listId && !i.done && sameText(i.text, text));
+    if (existing) return { item: existing, added: false };
+    return {
+      item: store.saveListItem({ listId, text: text.trim(), done: false, personId, dueOn, createdAt: nowIso(), doneAt: null }),
+      added: true,
+    };
+  };
+
+  app.post('/api/lists/:listId/items', async c => {
+    const listId = c.req.param('listId');
+    req(store.lists().some(l => l.id === listId), 'No such list.');
+    const body = await c.req.json<{ text?: string; personId?: string | null; dueOn?: string | null }>();
+    req(body.text && body.text.trim(), 'Type something to add.');
+    req(!body.personId || store.person(body.personId), 'No such person.');
+    req(!body.dueOn || DATE.test(body.dueOn), 'Due dates look like 2026-11-20.');
+    const { item, added } = addItem(listId, body.text, body.personId ?? null, body.dueOn ?? null);
+    return changed(c, { item, added }, added ? 201 : 200);
+  });
+
+  app.put('/api/items/:id', async c => {
+    const item = store.listItem(c.req.param('id'));
+    if (!item) return c.json({ error: 'That item was already removed.' }, 404);
+    const body = await c.req.json<{ text?: string; done?: boolean; personId?: string | null; dueOn?: string | null }>();
+    req(body.text === undefined || body.text.trim(), 'Items can’t be empty.');
+    req(!body.personId || store.person(body.personId), 'No such person.');
+    req(!body.dueOn || DATE.test(body.dueOn), 'Due dates look like 2026-11-20.');
+    const done = body.done ?? item.done;
+    const next = {
+      ...item,
+      text: body.text?.trim() ?? item.text,
+      personId: body.personId === undefined ? item.personId : body.personId,
+      dueOn: body.dueOn === undefined ? item.dueOn : body.dueOn,
+      done,
+      doneAt: done ? (item.done ? item.doneAt : nowIso()) : null,
+    };
+    store.saveListItem(next);
+    return changed(c, next);
+  });
+
+  app.delete('/api/items/:id', c => {
+    if (!store.deleteListItem(c.req.param('id'))) return c.json({ error: 'That item was already removed.' }, 404);
+    return changed(c, { ok: true });
+  });
+
+  app.post('/api/lists/:listId/clear-done', c => changed(c, { removed: store.clearDone(c.req.param('listId')) }));
+
+  // Saved meals
+  const toIngredients = (v: unknown): string[] =>
+    (Array.isArray(v) ? v : String(v ?? '').split('\n')).map(s => String(s).trim()).filter(Boolean);
+
+  app.post('/api/meals', async c => {
+    const body = await c.req.json<{ name?: string; url?: string; notes?: string; ingredients?: unknown }>();
+    req(body.name && body.name.trim(), 'Give the meal a name.');
+    req(!store.mealByName(body.name), `“${body.name.trim()}” is already saved.`);
+    return changed(c, store.saveMeal({
+      name: body.name.trim(), url: body.url?.trim() ?? '', notes: body.notes?.trim() ?? '', ingredients: toIngredients(body.ingredients),
+    }), 201);
+  });
+
+  app.put('/api/meals/:id', async c => {
+    const meal = store.meal(c.req.param('id'));
+    if (!meal) return c.json({ error: 'No such meal.' }, 404);
+    const body = await c.req.json<{ name?: string; url?: string; notes?: string; ingredients?: unknown }>();
+    req(body.name === undefined || body.name.trim(), 'Give the meal a name.');
+    const other = body.name ? store.mealByName(body.name) : undefined;
+    req(!other || other.id === meal.id, `“${body.name?.trim()}” is already saved.`);
+    const next = {
+      ...meal, name: body.name?.trim() ?? meal.name, url: body.url?.trim() ?? meal.url, notes: body.notes?.trim() ?? meal.notes,
+      ingredients: body.ingredients === undefined ? meal.ingredients : toIngredients(body.ingredients),
+    };
+    store.saveMeal(next);
+    // Keep planned dinners' titles in step with a renamed meal.
+    if (next.name !== meal.name) {
+      for (const d of store.dinners('0000-01-01', '9999-12-31')) if (d.mealId === meal.id) store.saveDinner({ ...d, title: next.name });
+    }
+    return changed(c, next);
+  });
+
+  app.delete('/api/meals/:id', c => {
+    if (!store.deleteMeal(c.req.param('id'))) return c.json({ error: 'No such meal.' }, 404);
+    return changed(c, { ok: true });
+  });
+
+  // Dinners
+  app.put('/api/dinners/:date', async c => {
+    const date = c.req.param('date');
+    req(DATE.test(date), 'Dates look like 2026-11-20.');
+    const body = await c.req.json<{ title?: string; cookId?: string | null; note?: string }>();
+    const title = body.title?.trim() ?? '';
+    if (!title) { store.deleteDinner(date); return changed(c, { date, removed: true }); }
+    req(!body.cookId || store.person(body.cookId), 'No such person.');
+    // New dinners are saved as meals, so next time they're one tap away.
+    const meal = store.mealByName(title) ?? store.saveMeal({ name: title, url: '', notes: '', ingredients: [] });
+    const dinner = { date, mealId: meal.id, title: meal.name, cookId: body.cookId ?? null, note: body.note?.trim() ?? '' };
+    store.saveDinner(dinner);
+    return changed(c, dinner);
+  });
+
+  app.post('/api/dinners/copy-week', async c => {
+    const { from } = await c.req.json<{ from?: string }>();
+    req(from && DATE.test(from), 'Choose the week to fill.');
+    const last = store.dinners(addDays(from, -7), addDays(from, -1));
+    const taken = new Set(store.dinners(from, addDays(from, 6)).map(d => d.date));
+    let copied = 0;
+    for (const d of last) {
+      const date = addDays(d.date, 7);
+      if (taken.has(date)) continue;
+      store.saveDinner({ ...d, date });
+      copied++;
+    }
+    return changed(c, { copied });
+  });
+
+  app.post('/api/dinners/groceries', async c => {
+    const { from, to } = await c.req.json<{ from?: string; to?: string }>();
+    req(from && to && DATE.test(from) && DATE.test(to), 'Choose the dates.');
+    const grocery = store.lists().find(l => l.kind === 'grocery');
+    req(grocery, 'There’s no grocery list.');
+    const added: string[] = [];
+    const missing: string[] = [];
+    for (const d of store.dinners(from, to)) {
+      const meal = d.mealId ? store.meal(d.mealId) : undefined;
+      if (!meal?.ingredients.length) { missing.push(d.title); continue; }
+      for (const ing of meal.ingredients) if (addItem(grocery.id, ing).added) added.push(ing);
+    }
+    return changed(c, { added, missing: [...new Set(missing)] });
   });
 
   // Settings

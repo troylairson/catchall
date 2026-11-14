@@ -2,8 +2,9 @@ import { useState } from 'react';
 import type { Board } from '../../shared/types';
 import { addDays, dayOfMonth, monthName, startOfWeek, weekdayName } from '../../shared/dates';
 import { useBoard, useNow } from '../api';
-import { awayOn, colorVar, itemsOn, nowMinutes, personById } from '../lib';
+import { awayOn, colorVar, dinnerOn, itemsOn, nowMinutes, personById } from '../lib';
 import { Avatar, FamilyMark } from './Avatar';
+import { TodoCheck } from './TodoCheck';
 
 export function PhoneAgenda({ today }: { today: string }) {
   const [day, setDay] = useState(today);
@@ -44,6 +45,7 @@ export function PhoneAgenda({ today }: { today: string }) {
         </div>
       ))}
       {noSchool && <div className="phone-school">🏫 No school · {noSchool.label}</div>}
+      {dinnerOn(board, day) && <a className="phone-dinner" href="#/meals">🍽 Dinner: <b>{dinnerOn(board, day)!.title}</b></a>}
 
       <div className="filters" role="group" aria-label="Show people">
         {board.people.map(p => (
@@ -62,6 +64,14 @@ export function PhoneAgenda({ today }: { today: string }) {
           const people = i.personIds.map(id => personById(board, id)).filter(Boolean) as Board['people'];
           const past = day < nowDate || (day === nowDate && !i.allDay && i.endMinutes < minutes);
           const off = i.status !== 'on';
+          if (i.kind === 'todo') {
+            return (
+              <div key={i.key} className="agenda-item agenda-todo" style={colorVar(people[0])}>
+                <TodoCheck itemId={i.itemId!} done={!!i.done} title={i.title} detail={i.timeLabel} />
+                <span className="agenda-people">{people.map(p => <Avatar key={p.id} person={p} size="sm" />)}</span>
+              </div>
+            );
+          }
           return (
             <div key={i.key} className={`agenda-item${past ? ' past' : ''}${off ? ' off' : ''}`} style={colorVar(people[0])}>
               <span className="agenda-time">{i.allDay ? 'All day' : i.timeLabel.split('–')[0]}</span>

@@ -15,6 +15,8 @@ detection is next.
 |---|---|
 | `/` on a wide screen | Wall display: Today, Week, Kids and an idle clock |
 | `/` on a phone | Today's agenda, with day-by-day navigation and per-person filters |
+| `/#/lists` | Groceries and Family to-do: check off, add, assign a person or due date |
+| `/#/meals` | This week's dinners, who's cooking, saved meals and their ingredients |
 | `/#/kids` | Yes or no for each kid activity today, with the next date |
 | `/#/activities` | Add and edit activities; cancel, move or add a note to one date |
 | `/#/settings` | Names, colors and emoji; calendars; snow days; trips; display settings; sample data |
@@ -53,6 +55,20 @@ Environment variables: `PORT` (8710), `DATA_DIR` (`.data`), `BACKUP_DIR`
 (`0` turns off weather requests), `SYNC_MINUTES` (10), `CALDAV_URL` (iCloud; point it
 at another CalDAV server for testing), `SECRET_KEY` (base64, 32 bytes; otherwise a key
 is generated into `$DATA_DIR/secret.key`).
+
+## Meals and lists
+
+- **Dinners:** type a dinner for any day of the week, or pick one you've had before.
+  New dinners are saved as meals automatically. Tonight's dinner, and who's cooking,
+  show at the top of Today.
+- **Saved meals:** give a meal a recipe link and its ingredients (one per line). Then
+  "Add this week's ingredients to Groceries" adds everything for the week's dinners,
+  skipping items already on the list. "Copy the week before" fills empty days from the
+  previous week.
+- **Lists:** Groceries and Family to-do. Anyone can check items off on the wall or a
+  phone. Checked items stay, faded, for two days, or until you clear them. A to-do with
+  a person and a due date also shows in that person's column on that day, and stays on
+  Today until it's done.
 
 ## Connecting iCloud calendars
 
