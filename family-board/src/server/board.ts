@@ -36,6 +36,10 @@ export function buildBoard(
     weather: opts.weather ?? null,
     hasDemoData: store.hasDemoData(),
     syncProblems: syncProblems(store, opts.now ?? new Date()),
+    lists: store.lists(),
+    items: store.listItems(opts.now ?? new Date()),
+    meals: store.meals(),
+    dinners: store.dinners(from, to),
   };
 }
 

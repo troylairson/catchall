@@ -262,7 +262,10 @@ Each phase ends with something usable on the actual wall.
    Weather, night dimming, the phone agenda and filters, and backups were built early,
    in phases 1 and 2.
 5. **Later, optional.** Plain-English quick add (an LLM call that turns a sentence into
-   an activity change for you to confirm), writing back to Google, then Lists and Meals.
+   an activity change for you to confirm), and writing back to Google.
+6. ✅ **Meals and lists**, pulled forward at the family's request: weekly dinners with
+   saved meals and ingredients, Groceries and Family to-do, and to-dos with due dates
+   on Today.
 
 ## Decisions made
 

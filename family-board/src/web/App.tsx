@@ -4,6 +4,8 @@ import { useApplyTheme } from './theme';
 import { Wall } from './components/Wall';
 import { PhoneAgenda } from './components/Phone';
 import { KidsView } from './components/KidsView';
+import { ListsView } from './components/Lists';
+import { MealsView } from './components/Meals';
 import { SettingsPage } from './components/Settings';
 import { ActivityEditor, ActivityList } from './components/Activities';
 
@@ -30,7 +32,7 @@ function useIsWide(): boolean {
 }
 
 const TABS = [
-  ['', 'Today'], ['kids', 'Kids'], ['activities', 'Activities'], ['settings', 'Settings'],
+  ['', 'Today'], ['lists', 'Lists'], ['meals', 'Meals'], ['kids', 'Kids'], ['settings', 'Settings'],
 ] as const;
 
 /** If Google redirected straight back here (only when the browser runs on the box itself),
@@ -68,6 +70,8 @@ export function App() {
   const [section, sub] = route.split('/');
   let page: React.ReactNode;
   if (section === 'kids') page = <div className="phone-page"><h1>Kids</h1><KidsView board={board} /></div>;
+  else if (section === 'lists') page = <div className="phone-page"><h1>Lists</h1><ListsView board={board} /></div>;
+  else if (section === 'meals') page = <div className="phone-page"><h1>Meals</h1><MealsView board={board} /></div>;
   else if (section === 'activities' && sub) page = <ActivityEditor key={sub} board={board} id={sub === 'new' ? null : sub} />;
   else if (section === 'activities') page = <ActivityList board={board} />;
   else if (section === 'settings') page = <SettingsPage board={board} />;
@@ -82,7 +86,8 @@ export function App() {
       <main>{page}</main>
       <nav className="tabbar" aria-label="Sections">
         {TABS.map(([path, label]) => (
-          <a key={label} href={`#/${path}`} aria-current={(section || '') === path ? 'page' : undefined}>{label}</a>
+          <a key={label} href={`#/${path}`}
+            aria-current={(section || '') === path || (path === 'kids' && section === 'activities') ? 'page' : undefined}>{label}</a>
         ))}
         {wide && <a href="#/wall">Wall</a>}
       </nav>

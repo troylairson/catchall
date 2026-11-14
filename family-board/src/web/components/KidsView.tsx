@@ -23,6 +23,8 @@ function nextLine(a: ActivityAnswer): string {
 export function KidsView({ board }: { board: Board }) {
   const kids = board.people.filter(p => p.role === 'kid');
   return (
+    <div className="kids-page">
+    <a className="link-btn kids-edit" href="#/activities">Add or edit activities</a>
     <div className="kids" style={{ '--n': kids.length } as React.CSSProperties}>
       {kids.map(kid => {
         const acts = board.activities.filter(a => a.personId === kid.id);
@@ -54,6 +56,7 @@ export function KidsView({ board }: { board: Board }) {
           </section>
         );
       })}
+    </div>
     </div>
   );
 }

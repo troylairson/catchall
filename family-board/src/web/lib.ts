@@ -3,11 +3,14 @@
 
 import type { CSSProperties } from 'react';
 import { EVERYONE, type Board, type CalendarEvent, type Occurrence, type OccurrenceStatus, type Person, type Trip } from '../shared/types';
-import { daysBetween, formatTime, timeToMinutes, toZoned, zoneAbbrev } from '../shared/dates';
+import { daysBetween, formatTime, shortDate, timeToMinutes, toZoned, zoneAbbrev } from '../shared/dates';
 
 export interface DayItem {
   key: string;
-  kind: 'event' | 'activity';
+  kind: 'event' | 'activity' | 'todo';
+  /** For to-dos: the list item, so it can be checked off from any screen. */
+  itemId?: string;
+  done?: boolean;
   personIds: string[];
   title: string;
   icon: string;
@@ -61,8 +64,26 @@ function occurrenceItem(o: Occurrence): DayItem {
 }
 
 /** Every item on a date, sorted with all-day items first. */
+/** To-dos due on a date. Today also shows anything overdue. */
+function todoItems(board: Board, date: string): DayItem[] {
+  return board.items
+    .filter(i => i.dueOn && (i.dueOn === date || (date === board.today && i.dueOn < date && !i.done)))
+    .map(i => ({
+      key: `t-${i.id}`, kind: 'todo' as const, itemId: i.id, done: i.done, personIds: i.personId ? [i.personId] : [],
+      title: i.text, icon: '', allDay: true, minutes: -1, endMinutes: -1,
+      timeLabel: i.dueOn! < date ? `Overdue · was due ${shortDate(i.dueOn!)}` : 'To do',
+      location: '', status: 'on' as const,
+    }));
+}
+
+/** The dinner planned for a date, if any. */
+export function dinnerOn(board: Board, date: string) {
+  return board.dinners.find(d => d.date === date);
+}
+
 export function itemsOn(board: Board, date: string): DayItem[] {
   const items = [
+    ...todoItems(board, date),
     ...board.events.map(e => eventItem(e, date, board)).filter((x): x is DayItem => !!x),
     ...board.occurrences.filter(o => o.date === date).map(occurrenceItem),
   ];
