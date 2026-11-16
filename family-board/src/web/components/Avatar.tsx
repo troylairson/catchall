@@ -1,4 +1,5 @@
 import type { Person } from '../../shared/types';
+import type { AwayEntry } from '../lib';
 import { textOn } from '../../shared/colors';
 
 export function Avatar({ person, away, size = 'md' }: { person: Person; away?: boolean; size?: 'sm' | 'md' | 'lg' }) {
@@ -31,4 +32,13 @@ export function FamilyMark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
       ✈
     </span>
   );
+}
+
+/** The traveler's avatar, the kids' avatars side by side, or a plane for the whole family. */
+export function AwayMark({ entry }: { entry: AwayEntry }) {
+  if (entry.person) return <Avatar person={entry.person} size="sm" away />;
+  if (entry.people.length && entry.people.length < 4 && entry.trip.personId !== 'everyone') {
+    return <span className="avatar-group">{entry.people.map(p => <Avatar key={p.id} person={p} size="sm" />)}</span>;
+  }
+  return <FamilyMark size="sm" />;
 }

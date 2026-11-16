@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Board } from '../../shared/types';
-import { dayOfMonth, formatTime, monthName, weekdayName } from '../../shared/dates';
+import { addDays, dayOfMonth, formatTime, monthName, weekdayName } from '../../shared/dates';
 import { awayOn, dinnerOn, isDimTime, itemsOn, nowMinutes, personById, tripProgress } from '../lib';
 import { useNow } from '../api';
-import { Avatar, FamilyMark, Sleeps } from './Avatar';
+import { AwayMark, Avatar, Sleeps } from './Avatar';
 import { TodayView } from './TodayView';
 import { WeekView } from './WeekView';
 import { KidsView } from './KidsView';
@@ -24,13 +24,14 @@ function AwayBanners({ board }: { board: Board }) {
   if (!away.length) return null;
   return (
     <div className="away-list">
-      {away.map(({ person, trip }) => {
+      {away.map(entry => {
+        const { person, trip } = entry;
         const prog = tripProgress(trip, board.today);
         const home = prog.left === 0 ? 'home tonight' : `home ${weekdayName(trip.endsOn)}`;
         return (
           <div key={trip.id} className="away-banner" style={{ '--c': person?.color ?? 'var(--family)' } as React.CSSProperties}>
-            {person ? <Avatar person={person} size="sm" away /> : <FamilyMark size="sm" />}
-            <span><b>{person ? `${person.name} is in ${trip.city}` : `Family trip to ${trip.city}`}</b> · {home}</span>
+            <AwayMark entry={entry} />
+            <span><b>{entry.label}</b> · {home}</span>
             <Sleeps total={prog.total} done={prog.done} />
           </div>
         );
@@ -53,7 +54,12 @@ function IdleScreen({ board, now, onWake }: { board: Board; now: Date; onWake: (
   const todos = board.items
     .filter(i => todoLists.has(i.listId) && !i.done)
     .sort((a, b) => (a.dueOn ?? '9999').localeCompare(b.dueOn ?? '9999') || a.createdAt.localeCompare(b.createdAt));
-  const shownTodos = todos.slice(0, 4);
+  const shownTodos = todos.slice(0, 3);
+  const tomorrow = addDays(board.today, 1);
+  // To-dos already have their own section on this screen.
+  const tomorrowItems = itemsOn(board, tomorrow).filter(i => i.status === 'on' && i.kind !== 'todo');
+  const tomorrowDinner = dinnerOn(board, tomorrow);
+  const noSchoolTomorrow = board.schoolDays.find(d => d.date === tomorrow && d.kind === 'no_school');
   return (
     <button className="idle" onClick={onWake} aria-label="Open the board">
       <div className="idle-main">
@@ -99,14 +105,31 @@ function IdleScreen({ board, now, onWake }: { board: Board; now: Date; onWake: (
           })}
           {todos.length > shownTodos.length && <div className="idle-more">+ {todos.length - shownTodos.length} more on Lists</div>}
         </>}
+        {(tomorrowItems.length > 0 || tomorrowDinner || noSchoolTomorrow) && <>
+          <h2>Tomorrow · {weekdayName(tomorrow)}</h2>
+          {noSchoolTomorrow && <div className="idle-up idle-note">🏫 No school · {noSchoolTomorrow.label}</div>}
+          {tomorrowItems.slice(0, 3).map(i => {
+            const p = personById(board, i.personIds[0]);
+            return (
+              <div key={i.key} className="idle-up">
+                <span className="idle-time">{i.allDay ? (i.kind === 'todo' ? 'To do' : 'All day') : i.timeLabel.split('–')[0]}</span>
+                {p && <Avatar person={p} size="sm" />}
+                <span>{i.icon} {i.title}</span>
+              </div>
+            );
+          })}
+          {tomorrowItems.length > 3 && <div className="idle-more">+ {tomorrowItems.length - 3} more tomorrow</div>}
+          {tomorrowDinner && <div className="idle-up idle-note">🍽 Dinner: {tomorrowDinner.title}</div>}
+        </>}
         {away.length > 0 && <>
           <h2>Away</h2>
-          {away.map(({ person, trip }) => {
+          {away.map(entry => {
+            const { person, trip } = entry;
             const prog = tripProgress(trip, board.today);
             return (
               <div key={trip.id} className="idle-up" style={{ '--c': person?.color ?? 'var(--family)' } as React.CSSProperties}>
-                {person ? <Avatar person={person} size="sm" away /> : <FamilyMark size="sm" />}
-                <span>{person ? `${person.name} is in ${trip.city}` : `Everyone is in ${trip.city}`}</span>
+                <AwayMark entry={entry} />
+                <span>{entry.label}</span>
                 <Sleeps total={prog.total} done={prog.done} />
               </div>
             );

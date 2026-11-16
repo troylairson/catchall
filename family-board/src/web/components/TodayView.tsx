@@ -1,5 +1,5 @@
 import type { Board, Person } from '../../shared/types';
-import { formatTime, shortDate } from '../../shared/dates';
+import { addDays, formatTime, shortDate } from '../../shared/dates';
 import { colorVar, dinnerOn, familyTrip, itemsFor, nowMinutes, personalTrip, personById, tripProgress, type DayItem } from '../lib';
 import { Avatar } from './Avatar';
 import { TodoCheck } from './TodoCheck';
@@ -22,6 +22,26 @@ function ItemCard({ item, past, next, color }: { item: DayItem; past: boolean; n
           {[item.awayTimeLabel && `${item.awayTimeLabel} there`, item.location, item.note].filter(Boolean).join(' · ')}
         </div>
       )}
+    </div>
+  );
+}
+
+/** A short look at tomorrow at the bottom of a column. */
+function TomorrowList({ board, personId }: { board: Board; personId: string }) {
+  const tomorrow = addDays(board.today, 1);
+  const items = itemsFor(board, tomorrow, personId).filter(i => i.status === 'on' && !i.done);
+  if (!items.length) return null;
+  const shown = items.slice(0, 3);
+  return (
+    <div className="tomorrow">
+      <div className="tomorrow-head">Tomorrow</div>
+      {shown.map(i => (
+        <div key={i.key} className="tomorrow-item">
+          <span className="tomorrow-time">{i.allDay ? (i.kind === 'todo' ? 'To do' : 'All day') : i.timeLabel.split('–')[0]}</span>
+          <span className="tomorrow-title">{i.icon && `${i.icon} `}{i.title}</span>
+        </div>
+      ))}
+      {items.length > shown.length && <div className="tomorrow-more">+ {items.length - shown.length} more</div>}
     </div>
   );
 }
@@ -63,7 +83,10 @@ function Column({ board, person, now }: { board: Board; person: Person; now: Dat
         </div>
       </header>
       {trip && <TripCard board={board} tripId={trip.id} />}
-      <div className="col-body">{body}</div>
+      <div className="col-body">
+        {body}
+        <TomorrowList board={board} personId={person.id} />
+      </div>
     </section>
   );
 }

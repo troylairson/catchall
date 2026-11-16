@@ -2,7 +2,7 @@
  *  mixing calendar events and kid activities. */
 
 import type { CSSProperties } from 'react';
-import { EVERYONE, type Board, type CalendarEvent, type Occurrence, type OccurrenceStatus, type Person, type Trip } from '../shared/types';
+import { EVERYONE, KIDS, type Board, type CalendarEvent, type Occurrence, type OccurrenceStatus, type Person, type Trip } from '../shared/types';
 import { daysBetween, formatTime, shortDate, timeToMinutes, toZoned, zoneAbbrev } from '../shared/dates';
 
 export interface DayItem {
@@ -98,9 +98,12 @@ export function itemsFor(board: Board, date: string, personId: string | null): D
 
 const covers = (t: Trip, date: string) => t.startsOn <= date && date <= t.endsOn;
 
-/** A trip this person takes on their own. */
+const isKid = (board: Board, personId: string) => board.people.some(p => p.id === personId && p.role === 'kid');
+
+/** A trip this person takes without the whole family: their own, or the kids' trip for a kid. */
 export function personalTrip(board: Board, personId: string, date: string): Trip | null {
-  return board.trips.find(t => t.personId === personId && covers(t, date)) ?? null;
+  return board.trips.find(t => covers(t, date)
+    && (t.personId === personId || (t.personId === KIDS && isKid(board, personId)))) ?? null;
 }
 
 /** A trip the whole family takes, such as a vacation. */
@@ -113,13 +116,32 @@ export function activeTrip(board: Board, personId: string, date: string): Trip |
   return personalTrip(board, personId, date) ?? familyTrip(board, date);
 }
 
-/** Everyone who is away on a date: the family trip first, then individual trips. */
-export function awayOn(board: Board, date: string): Array<{ trip: Trip; person: Person | null }> {
+export interface AwayEntry {
+  trip: Trip;
+  /** The traveler, or null for a group (everyone, or all the kids). */
+  person: Person | null;
+  /** Everyone in the group; the traveler alone for a personal trip. */
+  people: Person[];
+  /** "Alexia is in Denver", "Lincoln & Everly are in Columbus", "Family trip to Orlando". */
+  label: string;
+}
+
+const joinNames = (people: Person[]) =>
+  people.length <= 2 ? people.map(p => p.name).join(' & ') : `${people.slice(0, -1).map(p => p.name).join(', ')} & ${people[people.length - 1].name}`;
+
+/** Everyone who is away on a date: the family trip first, then the kids', then individual trips. */
+export function awayOn(board: Board, date: string): AwayEntry[] {
+  const out: AwayEntry[] = [];
   const family = familyTrip(board, date);
-  const out: Array<{ trip: Trip; person: Person | null }> = family ? [{ trip: family, person: null }] : [];
+  if (family) out.push({ trip: family, person: null, people: board.people, label: `Family trip to ${family.city}` });
+  const kidsTrip = board.trips.find(t => t.personId === KIDS && covers(t, date));
+  if (kidsTrip) {
+    const kids = board.people.filter(p => p.role === 'kid');
+    out.push({ trip: kidsTrip, person: null, people: kids, label: `${joinNames(kids)} ${kids.length === 1 ? 'is' : 'are'} in ${kidsTrip.city}` });
+  }
   for (const p of board.people) {
-    const t = personalTrip(board, p.id, date);
-    if (t) out.push({ trip: t, person: p });
+    const t = board.trips.find(x => x.personId === p.id && covers(x, date));
+    if (t) out.push({ trip: t, person: p, people: [p], label: `${p.name} is in ${t.city}` });
   }
   return out;
 }

@@ -13,19 +13,22 @@ export function buildBoard(
   const settings = store.settings();
   const today = toZoned(opts.now ?? new Date(), settings.timezone).date;
   const from = opts.from ?? startOfWeek(today);
-  const to = opts.to ?? addDays(from, 6);
+  // The week, plus tomorrow when today is Sunday, so screens can always show tomorrow.
+  const weekEnd = addDays(from, 6);
+  const to = opts.to ?? (weekEnd < addDays(today, 1) ? addDays(today, 1) : weekEnd);
 
   const schoolDays = store.schoolDays();
   const schoolYear = store.schoolYear();
   const exceptions = store.exceptions();
   const allTrips = store.trips();
-  const ctx = makeContext(schoolDays, schoolYear, exceptions, allTrips);
+  const people = store.people();
+  const ctx = makeContext(schoolDays, schoolYear, exceptions, allTrips, people.filter(p => p.role === 'kid').map(p => p.id));
   const activities = store.activities();
   const enabled = new Set(store.calendarSources().filter(c => c.enabled).map(c => c.id));
 
   return {
     today, from, to, settings,
-    people: store.people(),
+    people,
     events: mergeDuplicates([
       ...store.events(from, to).filter(e => e.calendarId === 'sample' || e.calendarId === MANUAL_CALENDAR || enabled.has(e.calendarId)),
       // A day of padding each side, matching how stored events are fetched.

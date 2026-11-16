@@ -365,3 +365,19 @@ textarea { width: 100%; border: 1px solid var(--line); background: var(--surface
 .editing-banner { margin: 0; padding: 8px 12px; border-radius: 10px; font-weight: 700; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
 .segmented button:disabled { opacity: .4; cursor: not-allowed; }
 .plain-list li.event-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+
+.avatar-group { display: inline-flex; }
+.avatar-group .avatar + .avatar { margin-left: -8px; box-shadow: 0 0 0 2px var(--surface); }
+
+/* Tomorrow */
+.tomorrow { margin-top: auto; padding-top: 10px; border-top: 1px dashed var(--line); display: grid; gap: 4px; flex: none; }
+.tomorrow-head { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tomorrow-item { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; font-size: 14px; align-items: baseline; }
+.tomorrow-time { color: var(--c); font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; }
+.tomorrow-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tomorrow-more { font-size: 12px; color: var(--muted); padding-left: 72px; }
+.col-body { flex: 1; }
+.idle-note { font-size: clamp(16px, 1.5vw, 20px); color: var(--muted); }
+.idle-side { gap: 10px; }
+.idle-side h2 { margin-top: 6px; }
+.idle-up { font-size: clamp(17px, 1.6vw, 22px); }

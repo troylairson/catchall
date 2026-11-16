@@ -3,7 +3,7 @@ import type { Board } from '../../shared/types';
 import { addDays, dayOfMonth, monthName, startOfWeek, weekdayName } from '../../shared/dates';
 import { useBoard, useNow } from '../api';
 import { awayOn, colorVar, dinnerOn, itemsOn, nowMinutes, personById } from '../lib';
-import { Avatar, FamilyMark } from './Avatar';
+import { AwayMark, Avatar } from './Avatar';
 import { TodoCheck } from './TodoCheck';
 
 export function PhoneAgenda({ today }: { today: string }) {
@@ -38,10 +38,10 @@ export function PhoneAgenda({ today }: { today: string }) {
       </header>
       {day !== today && <button className="link-btn" onClick={() => setDay(today)}>Back to today</button>}
 
-      {away.map(({ person, trip }) => (
-        <div key={trip.id} className="phone-away" style={colorVar(person ?? undefined)}>
-          {person ? <Avatar person={person} size="sm" away /> : <FamilyMark size="sm" />}
-          <span><b>{person ? `${person.name} is in ${trip.city}` : `Family trip to ${trip.city}`}</b>{trip.returnNote && ` · ${trip.returnNote}`}</span>
+      {away.map(entry => (
+        <div key={entry.trip.id} className="phone-away" style={colorVar(entry.person ?? undefined)}>
+          <AwayMark entry={entry} />
+          <span><b>{entry.label}</b>{entry.trip.returnNote && ` · ${entry.trip.returnNote}`}</span>
         </div>
       ))}
       {noSchool && <div className="phone-school">🏫 No school · {noSchool.label}</div>}

@@ -184,3 +184,15 @@ describe('trips', () => {
     expect(occurrencesFor(activity(), '2026-11-19', '2026-11-19', c)[0].status).toBe('on');
   });
 });
+
+describe('kids’ trips', () => {
+  const kidsTrip = { id: 'k', personId: 'kids', city: 'Columbus', tz: 'America/New_York', startsOn: '2026-11-13', endsOn: '2026-11-15', returnNote: '' };
+
+  it('skips every kid’s activities but not a parent’s', () => {
+    const c = makeContext(schoolDays, year, [], [kidsTrip], ['lincoln', 'everly']);
+    const kidAct = activity({ rrule: 'FREQ=WEEKLY;BYDAY=FR', skipOn: [] });
+    expect(occurrencesFor(kidAct, '2026-11-13', '2026-11-13', c)[0]).toMatchObject({ status: 'skipped', reason: 'Away in Columbus' });
+    const parentAct = activity({ personId: 'troy', rrule: 'FREQ=WEEKLY;BYDAY=FR', skipOn: [] });
+    expect(occurrencesFor(parentAct, '2026-11-13', '2026-11-13', c)[0].status).toBe('on');
+  });
+});
