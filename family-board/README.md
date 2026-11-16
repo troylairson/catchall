@@ -70,6 +70,14 @@ is generated into `$DATA_DIR/secret.key`).
   a person and a due date also shows in that person's column on that day, and stays on
   Today until it's done.
 
+## Events added by hand
+
+Settings → Events adds one-off things that aren't on any calendar, such as the days a
+kid buys lunch at school. Choose who (a person or Everyone), describe it, and pick one
+or more dates. Add a start time (and optionally an end time) or leave it blank for an
+all-day item. Each date shows in that person's column and can be removed on its own.
+These events live only on the box; they aren't written to iCloud or Google.
+
 ## Connecting iCloud calendars
 
 In Settings → Calendars, each person connects their Apple ID once with an

@@ -108,6 +108,9 @@ export interface CalendarEvent {
   demo?: boolean;
 }
 
+/** calendarId for events added by hand in Settings. */
+export const MANUAL_CALENDAR = 'manual';
+
 /** A connected calendar account. The password never leaves the server. */
 export interface CalendarAccount {
   id: string;

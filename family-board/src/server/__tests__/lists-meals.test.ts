@@ -116,3 +116,54 @@ describe('dinners', () => {
     expect((await board('?from=2026-11-16&to=2026-11-22')).dinners).toHaveLength(1);
   });
 });
+
+describe('events added by hand', () => {
+  it('adds an all-day event on several dates for one kid', async () => {
+    const res = await call('POST', '/api/manual-events', {
+      personId: 'lincoln', title: 'Buys lunch', dates: ['2026-11-17', '2026-11-13', '2026-11-13'],
+    });
+    expect(res.status).toBe(201);
+    expect((res.body.events as unknown[]).length).toBe(2);
+    const today = (await board()).events.filter(e => e.title === 'Buys lunch');
+    expect(today).toEqual([expect.objectContaining({ allDay: true, start: '2026-11-13', end: '2026-11-14', personIds: ['lincoln'] })]);
+    const next = (await board('?from=2026-11-16&to=2026-11-22')).events.filter(e => e.title === 'Buys lunch');
+    expect(next.map(e => e.start)).toEqual(['2026-11-17']);
+  });
+
+  it('adds a timed event, an hour long unless an end time is given', async () => {
+    await call('POST', '/api/manual-events', { personId: 'everly', title: 'Field trip pickup', dates: ['2026-11-13'], startTime: '14:30' });
+    await call('POST', '/api/manual-events', { personId: 'everyone', title: 'Parent night', dates: ['2026-11-13'], startTime: '18:00', endTime: '19:30', location: 'Gym' });
+    const events = (await board()).events;
+    // 2:30 PM Eastern is 7:30 PM UTC.
+    expect(events.find(e => e.title === 'Field trip pickup')).toMatchObject({
+      allDay: false, start: '2026-11-13T19:30:00.000Z', end: '2026-11-13T20:30:00.000Z', personIds: ['everly'],
+    });
+    expect(events.find(e => e.title === 'Parent night')).toMatchObject({ end: '2026-11-14T00:30:00.000Z', personIds: [], location: 'Gym' });
+  });
+
+  it('lists upcoming events and removes one date', async () => {
+    await call('POST', '/api/manual-events', { personId: 'lincoln', title: 'Buys lunch', dates: ['2026-11-01', '2026-11-13', '2026-11-17'] });
+    const { body } = await call('GET', '/api/manual-events');
+    const upcoming = body.events as Array<{ id: string; start: string }>;
+    expect(upcoming.map(e => e.start)).toEqual(['2026-11-13', '2026-11-17']);
+    expect((await call('DELETE', `/api/manual-events/${upcoming[0].id}`)).status).toBe(200);
+    expect((await board()).events.some(e => e.title === 'Buys lunch')).toBe(false);
+    expect((await call('DELETE', `/api/manual-events/${upcoming[0].id}`)).status).toBe(404);
+  });
+
+  it('explains what’s missing or wrong', async () => {
+    const err = async (b: object) => (await call('POST', '/api/manual-events', { personId: 'lincoln', title: 'x', dates: ['2026-11-13'], ...b })).body.error;
+    expect(await err({ personId: 'nobody' })).toMatch(/who it’s for/);
+    expect(await err({ title: ' ' })).toMatch(/Describe/);
+    expect(await err({ dates: [] })).toMatch(/at least one date/);
+    expect(await err({ startTime: '25:00' })).toMatch(/Times look like/);
+    expect(await err({ endTime: '12:00' })).toMatch(/start time before/);
+    expect(await err({ startTime: '12:00', endTime: '11:00' })).toMatch(/after the start/);
+  });
+
+  it('survives removing sample data', async () => {
+    await call('POST', '/api/manual-events', { personId: 'lincoln', title: 'Buys lunch', dates: ['2026-11-13'] });
+    await call('POST', '/api/demo/clear');
+    expect((await board()).events.some(e => e.title === 'Buys lunch')).toBe(true);
+  });
+});

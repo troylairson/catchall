@@ -4,10 +4,10 @@ import type { Store } from './store';
 import { buildBoard } from './board';
 import { loadDemoData } from './seed';
 import { getWeather } from './weather';
-import { addDays } from '../shared/dates';
+import { addDays, fromZoned, toZoned } from '../shared/dates';
 import type { CalendarSync } from './sync';
 import { isHexColor } from '../shared/colors';
-import { EVERYONE, type Activity, type ActivityException, type Settings, type Trip } from '../shared/types';
+import { EVERYONE, MANUAL_CALENDAR, type Activity, type ActivityException, type Settings, type Trip } from '../shared/types';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -146,6 +146,47 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
 
   app.delete('/api/school-days/:date', c => {
     if (!store.deleteManualSchoolDays(c.req.param('date'))) return c.json({ error: 'No day added by hand on that date.' }, 404);
+    return changed(c, { ok: true });
+  });
+
+  // Events added by hand (e.g. "Buys lunch" on the days a kid buys lunch)
+  app.get('/api/manual-events', c => {
+    const today = toZoned(now(), store.settings().timezone).date;
+    return c.json({ events: store.manualEvents(addDays(today, -1)) });
+  });
+
+  app.post('/api/manual-events', async c => {
+    const body = await c.req.json<{
+      personId?: string; dates?: string[]; title?: string; startTime?: string; endTime?: string; location?: string;
+    }>();
+    req(body.personId && (body.personId === EVERYONE || store.person(body.personId)), 'Choose who it’s for.');
+    req(body.title && body.title.trim(), 'Describe the event.');
+    const dates = [...new Set((body.dates ?? []).filter(Boolean))].sort();
+    req(dates.length > 0, 'Choose at least one date.');
+    req(dates.length <= 60, 'Add at most 60 dates at a time.');
+    req(dates.every(d => DATE.test(d)), 'Dates look like 2026-11-20.');
+    const start = body.startTime || null;
+    const end = body.endTime || null;
+    req(!start || TIME.test(start), 'Times look like 11:30.');
+    req(!end || (start && TIME.test(end)), 'Add a start time before an end time.');
+    req(!end || !start || end > start, 'The end time must be after the start time.');
+    const tz = store.settings().timezone;
+    const personIds = body.personId === EVERYONE ? [] : [body.personId];
+    const created = dates.map(date => {
+      const startAt = start ? fromZoned(date, start, tz) : null;
+      return store.saveEvent({
+        calendarId: MANUAL_CALENDAR, title: body.title!.trim(), allDay: !start,
+        start: startAt ? startAt.toISOString() : date,
+        // Without an end time, a timed event lasts an hour; all-day events end the next day.
+        end: startAt ? (end ? fromZoned(date, end, tz) : new Date(startAt.getTime() + 3_600_000)).toISOString() : addDays(date, 1),
+        location: body.location?.trim() ?? '', notes: '', personIds, externalUid: '', demo: false,
+      });
+    });
+    return changed(c, { events: created }, 201);
+  });
+
+  app.delete('/api/manual-events/:id', c => {
+    if (!store.deleteManualEvent(c.req.param('id'))) return c.json({ error: 'That event was already removed.' }, 404);
     return changed(c, { ok: true });
   });
 
