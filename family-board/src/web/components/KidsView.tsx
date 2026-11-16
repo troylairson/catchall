@@ -24,7 +24,7 @@ export function KidsView({ board }: { board: Board }) {
   const kids = board.people.filter(p => p.role === 'kid');
   return (
     <div className="kids-page">
-    <a className="link-btn kids-edit" href="#/activities">Add or edit activities</a>
+    <a className="button kids-edit" href="#/activities">Manage activities</a>
     <div className="kids" style={{ '--n': kids.length } as React.CSSProperties}>
       {kids.map(kid => {
         const acts = board.activities.filter(a => a.personId === kid.id);
@@ -36,7 +36,10 @@ export function KidsView({ board }: { board: Board }) {
               <span className="kid-q">Is today a … day?</span>
             </header>
             {acts.length === 0 && (
-              <p className="empty">No activities yet. Add them on your phone under Activities.</p>
+              <div className="kid-empty">
+                <p className="empty">No activities yet. Add practices, clubs and lessons to see “is today a … day?” here.</p>
+                <a className="button primary" href={`#/activities/new/${kid.id}`}>Add an activity for {kid.name}</a>
+              </div>
             )}
             {acts.map(act => {
               const ans = board.answers.find(a => a.activityId === act.id)!;
@@ -45,7 +48,7 @@ export function KidsView({ board }: { board: Board }) {
                 <div key={act.id} className="act">
                   <div className={`ans ${ans.happening ? 'yes' : 'no'}`}>{ans.happening ? 'Yes' : 'No'}</div>
                   <div className="act-body">
-                    <div className="act-name">{act.icon} {act.name}</div>
+                    <a className="act-name" href={`#/activities/${act.id}`} title={`Edit ${act.name}`}>{act.icon} {act.name}</a>
                     {line && <div className={`act-today${ans.happening ? '' : ' off'}`}>{line}</div>}
                     {!ans.happening && <div className="act-next">{nextLine(ans)}</div>}
                     <div className="act-rule">{describeActivity(act)}</div>
@@ -53,6 +56,7 @@ export function KidsView({ board }: { board: Board }) {
                 </div>
               );
             })}
+            {acts.length > 0 && <a className="link-btn kid-add" href={`#/activities/new/${kid.id}`}>+ Add an activity for {kid.name}</a>}
           </section>
         );
       })}
