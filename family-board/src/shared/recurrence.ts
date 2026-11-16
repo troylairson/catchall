@@ -58,20 +58,22 @@ export function schoolStatus(
   return null;
 }
 
-function ruleFor(activity: Activity): RRule {
-  const opts = RRule.parseString(activity.rrule);
-  return new RRule({
-    ...opts,
-    dtstart: parseDate(activity.startsOn),
-    until: activity.endsOn ? new Date(parseDate(activity.endsOn).getTime() + 86_399_000) : null,
+/** Dates an RRULE produces between `from` and `to` (inclusive), within its own
+ *  start and optional end date. */
+export function expandRule(rrule: string, startsOn: string, endsOn: string | null, from: string, to: string): string[] {
+  if (to < startsOn || (endsOn && from > endsOn)) return [];
+  const rule = new RRule({
+    ...RRule.parseString(rrule),
+    dtstart: parseDate(startsOn),
+    until: endsOn ? new Date(parseDate(endsOn).getTime() + 86_399_000) : null,
   });
+  const end = new Date(parseDate(to).getTime() + 86_399_000);
+  return rule.between(parseDate(from), end, true).map(formatDate);
 }
 
 /** Dates the rule produces between `from` and `to` (inclusive), ignoring school days. */
 export function expandDates(activity: Activity, from: string, to: string): string[] {
-  if (to < activity.startsOn || (activity.endsOn && from > activity.endsOn)) return [];
-  const end = new Date(parseDate(to).getTime() + 86_399_000);
-  return ruleFor(activity).between(parseDate(from), end, true).map(formatDate);
+  return expandRule(activity.rrule, activity.startsOn, activity.endsOn, from, to);
 }
 
 function base(activity: Activity, date: string): Occurrence {

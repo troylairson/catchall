@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import type {
   Activity, ActivityException, CalendarAccount, CalendarEvent, CalendarSource, Dinner, FamilyList,
-  ListItem, Meal, Person, SchoolDay, SchoolYear, Settings, Trip,
+  EventSeries, ListItem, Meal, Person, SchoolDay, SchoolYear, Settings, Trip,
 } from '../shared/types';
 
 const SCHEMA = `
@@ -64,6 +64,11 @@ const MIGRATIONS: string[] = [
      ingredients TEXT NOT NULL DEFAULT '[]');
    CREATE TABLE IF NOT EXISTS dinner (
      date TEXT PRIMARY KEY, mealId TEXT, title TEXT NOT NULL, cookId TEXT, note TEXT NOT NULL DEFAULT '');`,
+  // 4: repeating events added in Settings.
+  `CREATE TABLE IF NOT EXISTS eventSeries (
+     id TEXT PRIMARY KEY, personIds TEXT NOT NULL DEFAULT '[]', title TEXT NOT NULL, rrule TEXT NOT NULL,
+     startsOn TEXT NOT NULL, endsOn TEXT, startTime TEXT, endTime TEXT, location TEXT NOT NULL DEFAULT '',
+     skipNoSchool INTEGER NOT NULL DEFAULT 0, skipDates TEXT NOT NULL DEFAULT '[]');`,
 ];
 
 // Loaded through require because Vite and Vitest don't recognize node:sqlite yet.
@@ -72,8 +77,8 @@ const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof
 type Row = Record<string, unknown>;
 type SqlValue = string | number | null;
 
-const JSON_FIELDS = new Set(['keywords', 'skipOn', 'personIds', 'ingredients']);
-const BOOL_FIELDS = new Set(['allDay', 'demo', 'enabled', 'done']);
+const JSON_FIELDS = new Set(['keywords', 'skipOn', 'personIds', 'ingredients', 'skipDates']);
+const BOOL_FIELDS = new Set(['allDay', 'demo', 'enabled', 'done', 'skipNoSchool']);
 
 function encode(obj: object): Record<string, SqlValue> {
   const out: Record<string, SqlValue> = {};
@@ -209,6 +214,16 @@ export class Store {
       'SELECT * FROM event WHERE substr(start, 1, 10) <= :to AND substr("end", 1, 10) >= :from ORDER BY start',
       { from: padDate(from, -1), to: padDate(to, 1) });
   }
+  // repeating events added in Settings
+  eventSeries(): EventSeries[] { return this.all<EventSeries>('SELECT * FROM eventSeries ORDER BY title'); }
+  oneSeries(id: string): EventSeries | undefined { return this.eventSeries().find(s => s.id === id); }
+  saveSeries(s: Omit<EventSeries, 'id'> & { id?: string }): EventSeries {
+    const full = { ...s, id: s.id ?? randomUUID() } as EventSeries;
+    this.put('eventSeries', full);
+    return full;
+  }
+  deleteSeries(id: string): boolean { return this.remove('eventSeries', id); }
+
   /** Events added by hand that end on or after a date, soonest first. */
   manualEvents(fromDate: string): CalendarEvent[] {
     return this.all<CalendarEvent>(

@@ -78,6 +78,12 @@ or more dates. Add a start time (and optionally an end time) or leave it blank f
 all-day item. Each date shows in that person's column and can be removed on its own.
 These events live only on the box; they aren't written to iCloud or Google.
 
+Choose **Repeats** for something regular: every week or every other week on chosen days,
+or monthly (for example the 1st & 3rd Monday), with an optional end date. "Skip days
+with no school" leaves out breaks, holidays, snow days and summer, which suits things
+like school lunches. Single dates can be skipped (and brought back) without touching
+the rest of the series.
+
 ## Connecting iCloud calendars
 
 In Settings → Calendars, each person connects their Apple ID once with an
