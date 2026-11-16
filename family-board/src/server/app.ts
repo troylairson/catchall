@@ -184,9 +184,13 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
   app.put('/api/event-series/:id', async c => {
     const existing = store.oneSeries(c.req.param('id'));
     if (!existing) return c.json({ error: 'That repeating event was already removed.' }, 404);
-    const body = await c.req.json<{ skipDates?: string[] }>();
-    req(Array.isArray(body.skipDates) && body.skipDates.every(d => DATE.test(d)), 'Dates look like 2026-11-20.');
-    const next = { ...existing, skipDates: [...new Set(body.skipDates)].sort() };
+    const body = await c.req.json<Partial<EventSeries> & { personId?: string }>();
+    req(body.skipDates === undefined || (Array.isArray(body.skipDates) && body.skipDates.every(d => DATE.test(d))), 'Dates look like 2026-11-20.');
+    const skipDates = [...new Set(body.skipDates ?? existing.skipDates)].sort();
+    // Sending the rule means a full edit; otherwise only the skipped dates change.
+    const next = body.rrule === undefined
+      ? { ...existing, skipDates }
+      : { ...checkSeries(body), id: existing.id, skipDates };
     store.saveSeries(next);
     return changed(c, next);
   });
@@ -196,16 +200,12 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
     return changed(c, { ok: true });
   });
 
-  app.post('/api/manual-events', async c => {
-    const body = await c.req.json<{
-      personId?: string; dates?: string[]; title?: string; startTime?: string; endTime?: string; location?: string;
-    }>();
+  type ManualBody = { personId?: string; title?: string; startTime?: string; endTime?: string; location?: string };
+
+  /** Checks the fields shared by new and edited events, and builds one event per date. */
+  const manualEvent = (body: ManualBody) => {
     req(body.personId && (body.personId === EVERYONE || store.person(body.personId)), 'Choose who it’s for.');
     req(body.title && body.title.trim(), 'Describe the event.');
-    const dates = [...new Set((body.dates ?? []).filter(Boolean))].sort();
-    req(dates.length > 0, 'Choose at least one date.');
-    req(dates.length <= 60, 'Add at most 60 dates at a time.');
-    req(dates.every(d => DATE.test(d)), 'Dates look like 2026-11-20.');
     const start = body.startTime || null;
     const end = body.endTime || null;
     req(!start || TIME.test(start), 'Times look like 11:30.');
@@ -213,17 +213,38 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
     req(!end || !start || end > start, 'The end time must be after the start time.');
     const tz = store.settings().timezone;
     const personIds = body.personId === EVERYONE ? [] : [body.personId];
-    const created = dates.map(date => {
+    const title = body.title.trim();
+    return (date: string) => {
       const startAt = start ? fromZoned(date, start, tz) : null;
-      return store.saveEvent({
-        calendarId: MANUAL_CALENDAR, title: body.title!.trim(), allDay: !start,
+      return {
+        calendarId: MANUAL_CALENDAR, title, allDay: !start,
         start: startAt ? startAt.toISOString() : date,
         // Without an end time, a timed event lasts an hour; all-day events end the next day.
         end: startAt ? (end ? fromZoned(date, end, tz) : new Date(startAt.getTime() + 3_600_000)).toISOString() : addDays(date, 1),
         location: body.location?.trim() ?? '', notes: '', personIds, externalUid: '', demo: false,
-      });
-    });
+      };
+    };
+  };
+
+  app.post('/api/manual-events', async c => {
+    const body = await c.req.json<ManualBody & { dates?: string[] }>();
+    const build = manualEvent(body);
+    const dates = [...new Set((body.dates ?? []).filter(Boolean))].sort();
+    req(dates.length > 0, 'Choose at least one date.');
+    req(dates.length <= 60, 'Add at most 60 dates at a time.');
+    req(dates.every(d => DATE.test(d)), 'Dates look like 2026-11-20.');
+    const created = dates.map(date => store.saveEvent(build(date)));
     return changed(c, { events: created }, 201);
+  });
+
+  app.put('/api/manual-events/:id', async c => {
+    const existing = store.manualEvent(c.req.param('id'));
+    if (!existing) return c.json({ error: 'That event was already removed.' }, 404);
+    const body = await c.req.json<ManualBody & { date?: string }>();
+    const build = manualEvent(body);
+    req(body.date && DATE.test(body.date), 'Choose a date.');
+    const next = store.saveEvent({ ...build(body.date), id: existing.id });
+    return changed(c, next);
   });
 
   app.delete('/api/manual-events/:id', c => {

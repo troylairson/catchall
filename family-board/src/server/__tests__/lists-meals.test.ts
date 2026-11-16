@@ -225,3 +225,45 @@ describe('repeating events added by hand', () => {
     expect(await err({ startTime: '12:00', endTime: '11:00' })).toMatch(/after the start time/);
   });
 });
+
+describe('editing events added by hand', () => {
+  it('edits a one-off event: person, title, date and time', async () => {
+    const { body } = await call('POST', '/api/manual-events', { personId: 'lincoln', title: 'Buys lunch', dates: ['2026-11-13'] });
+    const id = (body.events as Array<{ id: string }>)[0].id;
+    const res = await call('PUT', `/api/manual-events/${id}`, {
+      personId: 'everly', title: 'Field trip', date: '2026-11-14', startTime: '09:00', endTime: '15:00', location: 'Science center',
+    });
+    expect(res.status).toBe(200);
+    const events = (await board()).events;
+    expect(events.some(e => e.title === 'Buys lunch')).toBe(false);
+    expect(events.find(e => e.title === 'Field trip')).toMatchObject({
+      id, personIds: ['everly'], allDay: false, start: '2026-11-14T14:00:00.000Z', end: '2026-11-14T20:00:00.000Z', location: 'Science center',
+    });
+    // Back to all day, for everyone.
+    await call('PUT', `/api/manual-events/${id}`, { personId: 'everyone', title: 'Field trip', date: '2026-11-14' });
+    expect((await board()).events.find(e => e.id === id)).toMatchObject({ allDay: true, start: '2026-11-14', personIds: [] });
+  });
+
+  it('checks edits like new events', async () => {
+    const { body } = await call('POST', '/api/manual-events', { personId: 'lincoln', title: 'x', dates: ['2026-11-13'] });
+    const id = (body.events as Array<{ id: string }>)[0].id;
+    expect((await call('PUT', `/api/manual-events/${id}`, { personId: 'lincoln', title: 'x', date: '' })).body.error).toMatch(/Choose a date/);
+    expect((await call('PUT', `/api/manual-events/${id}`, { personId: 'lincoln', title: '', date: '2026-11-13' })).body.error).toMatch(/Describe/);
+    expect((await call('PUT', '/api/manual-events/nope', { personId: 'lincoln', title: 'x', date: '2026-11-13' })).status).toBe(404);
+  });
+
+  it('edits a repeating event and keeps its skipped dates', async () => {
+    const { body } = await call('POST', '/api/event-series', { personId: 'lincoln', title: 'Buys lunch', rrule: 'FREQ=WEEKLY;BYDAY=TU,TH', startsOn: '2026-11-09' });
+    const id = (body as { id: string }).id;
+    await call('PUT', `/api/event-series/${id}`, { skipDates: ['2026-11-11'] });
+    const res = await call('PUT', `/api/event-series/${id}`, {
+      personId: 'lincoln', title: 'Buys lunch', rrule: 'FREQ=WEEKLY;BYDAY=MO,WE', startsOn: '2026-11-09', skipNoSchool: true,
+    });
+    expect(res.body).toMatchObject({ rrule: 'FREQ=WEEKLY;BYDAY=MO,WE', skipNoSchool: true, skipDates: ['2026-11-11'] });
+    // The board pads a day each side of the range; screens filter by date.
+    const dates = (await board('?from=2026-11-09&to=2026-11-15')).events
+      .filter(e => e.title === 'Buys lunch' && e.start <= '2026-11-15').map(e => e.start);
+    expect(dates).toEqual(['2026-11-09']);
+    expect((await call('PUT', `/api/event-series/${id}`, { personId: 'lincoln', title: 'x', rrule: 'bad', startsOn: '2026-11-09' })).status).toBe(400);
+  });
+});
