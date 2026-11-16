@@ -345,3 +345,13 @@ textarea { width: 100%; border: 1px solid var(--line); background: var(--surface
 .date-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .date-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font-size: 14px; font-weight: 600; }
 .date-chip button { min-height: 0; padding: 0 6px; border: 0; background: transparent; color: var(--muted); font-size: 16px; }
+
+/* Clock screen: dinner and to-dos */
+.idle-side { max-height: 100%; overflow: hidden; }
+.idle-dinner { font-family: var(--display); font-weight: 700; }
+.idle-cook { font-size: .8em; color: var(--muted); }
+.idle-box { width: 20px; height: 20px; flex: none; border-radius: 6px; border: 2px solid var(--c); }
+.idle-todo > span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.idle-due { font-size: 13px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--muted); flex: none; }
+.idle-due.overdue { background: color-mix(in srgb, var(--warn) 18%, var(--surface)); color: var(--warn); }
+.idle-more { font-size: 15px; color: var(--muted); padding-left: 34px; }

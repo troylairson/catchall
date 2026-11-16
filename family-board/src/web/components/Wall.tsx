@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Board } from '../../shared/types';
 import { dayOfMonth, formatTime, monthName, weekdayName } from '../../shared/dates';
-import { awayOn, isDimTime, itemsOn, nowMinutes, personById, tripProgress } from '../lib';
+import { awayOn, dinnerOn, isDimTime, itemsOn, nowMinutes, personById, tripProgress } from '../lib';
 import { useNow } from '../api';
 import { Avatar, FamilyMark, Sleeps } from './Avatar';
 import { TodayView } from './TodayView';
@@ -44,8 +44,16 @@ function IdleScreen({ board, now, onWake }: { board: Board; now: Date; onWake: (
   const { minutes } = nowMinutes(board, now);
   const upcoming = itemsOn(board, board.today)
     .filter(i => !i.allDay && i.status === 'on' && i.minutes >= minutes)
-    .slice(0, 4);
+    .slice(0, 3);
   const away = awayOn(board, board.today);
+  const dinner = dinnerOn(board, board.today);
+  const cook = dinner?.cookId ? personById(board, dinner.cookId) : undefined;
+  // Open Family to-dos: overdue and due today first, then by due date, then oldest first.
+  const todoLists = new Set(board.lists.filter(l => l.kind === 'todo').map(l => l.id));
+  const todos = board.items
+    .filter(i => todoLists.has(i.listId) && !i.done)
+    .sort((a, b) => (a.dueOn ?? '9999').localeCompare(b.dueOn ?? '9999') || a.createdAt.localeCompare(b.createdAt));
+  const shownTodos = todos.slice(0, 4);
   return (
     <button className="idle" onClick={onWake} aria-label="Open the board">
       <div className="idle-main">
@@ -68,6 +76,29 @@ function IdleScreen({ board, now, onWake }: { board: Board; now: Date; onWake: (
             </div>
           );
         })}
+        {dinner && <>
+          <h2>Dinner tonight</h2>
+          <div className="idle-up" style={{ '--c': cook?.color ?? 'var(--warn)' } as React.CSSProperties}>
+            <span className="idle-dinner">🍽 {dinner.title}</span>
+            {cook && <><Avatar person={cook} size="sm" /><span className="idle-cook">{cook.name} cooking</span></>}
+          </div>
+        </>}
+        {todos.length > 0 && <>
+          <h2>To do</h2>
+          {shownTodos.map(t => {
+            const p = t.personId ? personById(board, t.personId) : undefined;
+            const overdue = t.dueOn && t.dueOn < board.today;
+            return (
+              <div key={t.id} className="idle-up idle-todo" style={{ '--c': p?.color ?? 'var(--family)' } as React.CSSProperties}>
+                <span className="idle-box" aria-hidden="true" />
+                <span>{t.text}</span>
+                {p && <Avatar person={p} size="sm" />}
+                {t.dueOn && t.dueOn <= board.today && <span className={`idle-due${overdue ? ' overdue' : ''}`}>{overdue ? 'Overdue' : 'Today'}</span>}
+              </div>
+            );
+          })}
+          {todos.length > shownTodos.length && <div className="idle-more">+ {todos.length - shownTodos.length} more on Lists</div>}
+        </>}
         {away.length > 0 && <>
           <h2>Away</h2>
           {away.map(({ person, trip }) => {
