@@ -13,6 +13,7 @@ const NTHS: Array<[number, string]> = [[1, '1st'], [2, '2nd'], [3, '3rd'], [4, '
 export function ActivityList({ board }: { board: Board }) {
   return (
     <div className="phone-page">
+      <a className="link-btn" href="#/kids">‹ Kids</a>
       <div className="row between">
         <h1>Activities</h1>
         <a className="button primary" href="#/activities/new">Add activity</a>
@@ -35,10 +36,37 @@ export function ActivityList({ board }: { board: Board }) {
                 </li>
               ))}
             </ul>
+            <a className="link-btn" href={`#/activities/new/${p.id}`}>+ Add an activity for {p.name}</a>
           </section>
         );
       })}
     </div>
+  );
+}
+
+/** A summary in Settings, so activities are easy to find there too. */
+export function ActivitiesCard({ board }: { board: Board }) {
+  const kids = board.people.filter(p => p.role === 'kid');
+  return (
+    <section className="card">
+      <h2>Kids’ activities</h2>
+      <p className="hint">Practices, clubs and lessons that repeat. They power the Kids view’s “is today a … day?” answers and skip days with no school.</p>
+      <ul className="plain-list">
+        {kids.map(k => {
+          const acts = board.activities.filter(a => a.personId === k.id);
+          return (
+            <li key={k.id} className="event-row">
+              <div className="series-main">
+                <span className="row"><Avatar person={k} size="sm" />{k.name}</span>
+                <span className="muted small">{acts.length ? acts.map(a => `${a.icon} ${a.name}`.trim()).join(', ') : 'No activities yet'}</span>
+              </div>
+              <a className="link-btn" href={`#/activities/new/${k.id}`}>Add</a>
+            </li>
+          );
+        })}
+      </ul>
+      <a className="button" href="#/activities">Manage activities</a>
+    </section>
   );
 }
 
@@ -48,8 +76,8 @@ interface Draft extends Omit<Activity, 'id' | 'rrule'> {
   rawRule: string;
 }
 
-function toDraft(a: Activity | undefined, board: Board): Draft {
-  const kid = board.people.find(p => p.role === 'kid') ?? board.people[0];
+function toDraft(a: Activity | undefined, board: Board, personId?: string): Draft {
+  const kid = board.people.find(p => p.id === personId) ?? board.people.find(p => p.role === 'kid') ?? board.people[0];
   if (!a) {
     return {
       personId: kid?.id ?? '', name: '', icon: '', startTime: '15:15', endTime: '16:30', location: '', notes: '',
@@ -60,9 +88,9 @@ function toDraft(a: Activity | undefined, board: Board): Draft {
   return { ...a, preset: parsePreset(a.rrule), rawRule: a.rrule };
 }
 
-export function ActivityEditor({ board, id }: { board: Board; id: string | null }) {
+export function ActivityEditor({ board, id, personId }: { board: Board; id: string | null; personId?: string }) {
   const existing = id ? board.activities.find(a => a.id === id) : undefined;
-  const [d, setD] = useState<Draft>(() => toDraft(existing, board));
+  const [d, setD] = useState<Draft>(() => toDraft(existing, board, personId));
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 

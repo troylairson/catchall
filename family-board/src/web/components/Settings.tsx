@@ -6,6 +6,7 @@ import { api } from '../api';
 import { Avatar } from './Avatar';
 import { CalendarsCard } from './Calendars';
 import { ManualEventsCard } from './ManualEvents';
+import { ActivitiesCard } from './Activities';
 import { setThemeChoice, useThemeChoice, type ThemeChoice } from '../theme';
 import { formatTime } from '../../shared/dates';
 
@@ -245,6 +246,7 @@ export function SettingsPage({ board }: { board: Board }) {
       {board.people.map(p => <PersonCard key={p.id} person={p} />)}
       <CalendarsCard board={board} />
       <SchoolCard board={board} />
+      <ActivitiesCard board={board} />
       <ManualEventsCard board={board} />
       <TripsCard board={board} />
       <AppearanceCard board={board} />

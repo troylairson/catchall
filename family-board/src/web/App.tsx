@@ -67,12 +67,12 @@ export function App() {
     return <Wall board={board} stale={!!error} loadedAt={loadedAt} />;
   }
 
-  const [section, sub] = route.split('/');
+  const [section, sub, extra] = route.split('/');
   let page: React.ReactNode;
   if (section === 'kids') page = <div className="phone-page"><h1>Kids</h1><KidsView board={board} /></div>;
   else if (section === 'lists') page = <div className="phone-page"><h1>Lists</h1><ListsView board={board} /></div>;
   else if (section === 'meals') page = <div className="phone-page"><h1>Meals</h1><MealsView board={board} /></div>;
-  else if (section === 'activities' && sub) page = <ActivityEditor key={sub} board={board} id={sub === 'new' ? null : sub} />;
+  else if (section === 'activities' && sub) page = <ActivityEditor key={route} board={board} id={sub === 'new' ? null : sub} personId={sub === 'new' ? extra : undefined} />;
   else if (section === 'activities') page = <ActivityList board={board} />;
   else if (section === 'settings') page = <SettingsPage board={board} />;
   else page = <PhoneAgenda today={board.today} />;
