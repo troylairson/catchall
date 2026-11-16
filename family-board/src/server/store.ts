@@ -209,6 +209,14 @@ export class Store {
       'SELECT * FROM event WHERE substr(start, 1, 10) <= :to AND substr("end", 1, 10) >= :from ORDER BY start',
       { from: padDate(from, -1), to: padDate(to, 1) });
   }
+  /** Events added by hand that end on or after a date, soonest first. */
+  manualEvents(fromDate: string): CalendarEvent[] {
+    return this.all<CalendarEvent>(
+      `SELECT * FROM event WHERE calendarId = 'manual' AND substr("end", 1, 10) >= :fromDate ORDER BY start`, { fromDate });
+  }
+  deleteManualEvent(id: string): boolean {
+    return Number(this.db.prepare(`DELETE FROM event WHERE id = :id AND calendarId = 'manual'`).run({ id }).changes) > 0;
+  }
   saveEvent(e: Omit<CalendarEvent, 'id'> & { id?: string }): CalendarEvent {
     const full = { ...e, id: e.id ?? randomUUID(), demo: e.demo ?? false } as CalendarEvent;
     this.put('event', full);
