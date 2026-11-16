@@ -379,7 +379,10 @@ textarea { width: 100%; border: 1px solid var(--line); background: var(--surface
 .col-body { flex: 1; }
 .idle-note { font-size: clamp(16px, 1.5vw, 20px); color: var(--muted); }
 .idle-side { gap: 10px; }
-.idle-side h2 { margin-top: 6px; }
+/* Clear space between sections (Up next, Dinner, To do, Tomorrow, Away). Scales with
+   screen height so a busy day still fits on shorter displays. */
+.idle-side h2 { margin-top: clamp(16px, 4vh, 40px); margin-bottom: 2px; }
+.idle-side h2:first-child { margin-top: 0; }
 .idle-up { font-size: clamp(17px, 1.6vw, 22px); }
 
 /* Finding activities */
