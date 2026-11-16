@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { EVERYONE, type Board, type Person, type Settings as SettingsT, type Trip } from '../../shared/types';
+import { EVERYONE, KIDS, type Board, type Person, type Settings as SettingsT, type Trip } from '../../shared/types';
 import { SWATCHES, colorWarning, isHexColor } from '../../shared/colors';
 import { addDays, shortDate } from '../../shared/dates';
 import { api } from '../api';
@@ -135,12 +135,12 @@ function TripsCard({ board }: { board: Board }) {
   return (
     <section className="card">
       <h2>Trips</h2>
-      <p className="hint">While someone is away, the board shows where they are and counts the sleeps until they’re home. Choose Everyone for a family vacation. Activities for whoever is away are marked as not happening.</p>
+      <p className="hint">While someone is away, the board shows where they are and counts the sleeps until they’re home. Choose Kids when the kids go somewhere together, or Everyone for a family vacation. Activities for whoever is away are marked as not happening.</p>
       <ul className="plain-list">
         {trips.length === 0 && <li className="muted">No trips coming up.</li>}
         {trips.map(t => (
           <li key={t.id}>
-            <span>{t.personId === EVERYONE ? 'Everyone' : board.people.find(p => p.id === t.personId)?.name} in {t.city}</span>
+            <span>{t.personId === EVERYONE ? 'Everyone' : t.personId === KIDS ? 'Kids' : board.people.find(p => p.id === t.personId)?.name} in {t.city}</span>
             <span className="muted">{shortDate(t.startsOn)} – {shortDate(t.endsOn)}{t.demo ? ' · sample' : ''}</span>
             <button className="link-btn" onClick={() => void run(() => api('DELETE', `/api/trips/${t.id}`), 'Trip removed.')}>Remove</button>
           </li>
@@ -153,6 +153,7 @@ function TripsCard({ board }: { board: Board }) {
         <div className="field"><label htmlFor="t-who">Who</label>
           <select id="t-who" value={draft.personId} onChange={e => setDraft({ ...draft, personId: e.target.value })}>
             {board.people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <option value={KIDS}>Kids ({board.people.filter(p => p.role === 'kid').map(p => p.name).join(' & ')})</option>
             <option value={EVERYONE}>Everyone (family trip or vacation)</option>
           </select></div>
         <div className="field"><label htmlFor="t-city">City</label><input id="t-city" value={draft.city} placeholder="Denver" onChange={e => setDraft({ ...draft, city: e.target.value })} /></div>

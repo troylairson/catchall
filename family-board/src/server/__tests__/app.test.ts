@@ -118,3 +118,17 @@ describe('family trips', () => {
     expect(b.answers[0]).toMatchObject({ happening: false, today: { reason: 'Away in Orlando' } });
   });
 });
+
+describe('kids’ trips and tomorrow', () => {
+  it('accepts a trip for the kids', async () => {
+    const res = await call('POST', '/api/trips', { personId: 'kids', city: 'Columbus', tz: 'America/New_York', startsOn: '2026-11-13', endsOn: '2026-11-15' });
+    expect(res.status).toBe(201);
+    expect((await board()).trips.some(t => t.personId === 'kids')).toBe(true);
+  });
+
+  it('includes Monday when today is Sunday, so tomorrow can be shown', async () => {
+    const sunday = createApp({ store, now: () => new Date('2026-11-15T15:00:00Z'), weather: false });
+    const b = (await (await sunday.request('/api/board')).json()) as Board;
+    expect([b.today, b.from, b.to]).toEqual(['2026-11-15', '2026-11-09', '2026-11-16']);
+  });
+});

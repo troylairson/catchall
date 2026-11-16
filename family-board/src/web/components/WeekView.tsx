@@ -59,7 +59,8 @@ export function WeekView({ board }: { board: Board }) {
 }
 
 function WeekGrid({ board }: { board: Board }) {
-  const days = dateRange(board.from, board.to);
+  // Always one week, even when the board also loaded the next day.
+  const days = dateRange(board.from, addDays(board.from, 6));
   const hasFamily = days.some(d => itemsFor(board, d, null).length > 0 || familyTrip(board, d));
   const rows: Array<Person | null> = [...board.people, ...(hasFamily ? [null] : [])];
 

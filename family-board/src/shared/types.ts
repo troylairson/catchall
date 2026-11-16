@@ -205,10 +205,12 @@ export interface SyncProblem {
 
 /** Trip.personId for a trip the whole family takes, such as a vacation. */
 export const EVERYONE = 'everyone';
+/** Trip.personId for a trip all the kids take together (e.g. a weekend at Grandma's). */
+export const KIDS = 'kids';
 
 export interface Trip {
   id: string;
-  /** Who is away, or EVERYONE for the whole family. */
+  /** Who is away: a person, EVERYONE for the whole family, or KIDS for all the kids. */
   personId: string;
   city: string;
   /** IANA time zone at the destination, e.g. "America/Denver". */

@@ -11,7 +11,7 @@ const { RRule } = ((rruleModule as { RRule?: unknown }).RRule
   : (rruleModule as unknown as { default: typeof rruleModule }).default) as typeof rruleModule;
 type RRule = InstanceType<typeof RRule>;
 import {
-  EVERYONE, type Activity, type ActivityAnswer, type ActivityException, type Occurrence,
+  EVERYONE, KIDS, type Activity, type ActivityAnswer, type ActivityException, type Occurrence,
   type SchoolDay, type SchoolYear, type Trip,
 } from './types';
 import { addDays, formatDate, parseDate, shortDate, formatTime } from './dates';
@@ -23,6 +23,8 @@ export interface ScheduleContext {
   exceptions: ActivityException[];
   /** While someone is away (or everyone is), their activities don't happen. */
   trips: Trip[];
+  /** Who counts as a kid, for trips taken by all the kids. */
+  kidIds: Set<string>;
 }
 
 export function indexSchoolDays(days: SchoolDay[]): Map<string, SchoolDay[]> {
@@ -33,13 +35,19 @@ export function indexSchoolDays(days: SchoolDay[]): Map<string, SchoolDay[]> {
 
 export function makeContext(
   schoolDays: SchoolDay[], schoolYear: SchoolYear | null, exceptions: ActivityException[], trips: Trip[] = [],
+  kidIds: Iterable<string> = [],
 ): ScheduleContext {
-  return { schoolDays: indexSchoolDays(schoolDays), schoolYear, exceptions, trips };
+  return { schoolDays: indexSchoolDays(schoolDays), schoolYear, exceptions, trips, kidIds: new Set(kidIds) };
+}
+
+/** Whether a trip takes this person along: theirs, everyone's, or the kids' if they're a kid. */
+export function tripIncludes(trip: Trip, personId: string, kidIds: Set<string>): boolean {
+  return trip.personId === personId || trip.personId === EVERYONE || (trip.personId === KIDS && kidIds.has(personId));
 }
 
 /** The trip that takes this person away on this date, if any. */
-export function tripOn(personId: string, date: string, trips: Trip[]): Trip | null {
-  return trips.find(t => (t.personId === personId || t.personId === EVERYONE) && t.startsOn <= date && date <= t.endsOn) ?? null;
+export function tripOn(personId: string, date: string, trips: Trip[], kidIds: Set<string> = new Set()): Trip | null {
+  return trips.find(t => tripIncludes(t, personId, kidIds) && t.startsOn <= date && date <= t.endsOn) ?? null;
 }
 
 /** Whether there's no school or early release on a date, with the reason. */
@@ -116,7 +124,7 @@ export function occurrencesFor(
         occ.movedFrom = date;
         occ.note = move.note || `Time changed from ${formatTime(activity.startTime)}`;
       }
-      const trip = move ? null : tripOn(activity.personId, date, ctx.trips);
+      const trip = move ? null : tripOn(activity.personId, date, ctx.trips, ctx.kidIds);
       const school = schoolStatus(date, ctx);
       if (trip) {
         occ.status = 'skipped';
