@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EVERYONE, type Board, type CalendarEvent, type EventSeries } from '../../shared/types';
 import { formatTime, shortDate, toZoned, weekday } from '../../shared/dates';
-import { buildRule, describeRule, type RulePreset } from '../../shared/recurrence';
+import { buildRule, describeRule, parsePreset, type RulePreset } from '../../shared/recurrence';
 import { api } from '../api';
 
 type Repeat = 'none' | 'weekly' | 'biweekly' | 'monthly';
@@ -17,7 +17,7 @@ function whoOf(board: Board, personIds: string[]): string {
   return personIds.length ? personIds.map(id => board.people.find(p => p.id === id)?.name ?? '').join(', ') : 'Everyone';
 }
 
-function SeriesRow({ board, series }: { board: Board; series: EventSeries }) {
+function SeriesRow({ board, series, onEdit }: { board: Board; series: EventSeries; onEdit: () => void }) {
   const [skipDate, setSkipDate] = useState('');
   const [confirm, setConfirm] = useState(false);
   const setSkips = (skipDates: string[]) => void api('PUT', `/api/event-series/${series.id}`, { skipDates });
@@ -48,6 +48,7 @@ function SeriesRow({ board, series }: { board: Board; series: EventSeries }) {
         <label className="sr-only" htmlFor={`skip-${series.id}`}>Date to skip</label>
         <input id={`skip-${series.id}`} type="date" value={skipDate} onChange={e => setSkipDate(e.target.value)} />
         <button type="button" disabled={!skipDate} onClick={() => { setSkips([...series.skipDates, skipDate]); setSkipDate(''); }}>Skip this date</button>
+        <button type="button" className="link-btn" onClick={onEdit}>Edit</button>
         {!confirm
           ? <button type="button" className="link-btn danger-link" onClick={() => setConfirm(true)}>Remove</button>
           : <>
@@ -79,6 +80,8 @@ export function ManualEventsCard({ board }: { board: Board }) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [series, setSeries] = useState<EventSeries[]>([]);
   const [msg, setMsg] = useState<{ text: string; error?: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ kind: 'event' | 'series'; id: string; title: string } | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const tz = board.settings.timezone;
 
   useEffect(() => {
@@ -107,6 +110,47 @@ export function ManualEventsCard({ board }: { board: Board }) {
 
   const reset = () => {
     setTitle(''); setDates([]); setStartTime(''); setEndTime(''); setLocation(''); setEndsOn('');
+    // After an edit, go back to a fresh form rather than the edited event's settings.
+    if (editing) { setRepeat('none'); setSkipNoSchool(false); setDate(board.today); }
+    setEditing(null);
+  };
+
+  const showForm = () => window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+
+  /** Loads a one-off event into the form. */
+  const editEvent = (e: CalendarEvent) => {
+    setEditing({ kind: 'event', id: e.id, title: e.title });
+    setPersonId(e.personIds[0] ?? EVERYONE);
+    setTitle(e.title);
+    setRepeat('none');
+    setDates([]);
+    if (e.allDay) {
+      setDate(e.start); setStartTime(''); setEndTime('');
+    } else {
+      const s = toZoned(e.start, tz);
+      setDate(s.date); setStartTime(s.time); setEndTime(toZoned(e.end, tz).time);
+    }
+    setLocation(e.location);
+    setMsg(null);
+    showForm();
+  };
+
+  /** Loads a repeating event into the form. */
+  const editSeries = (s: EventSeries) => {
+    const p = parsePreset(s.rrule);
+    setEditing({ kind: 'series', id: s.id, title: s.title });
+    setPersonId(s.personIds[0] ?? EVERYONE);
+    setTitle(s.title);
+    if (p?.kind === 'monthly') { setRepeat('monthly'); setNths(p.nths); setMonthDay(p.day); }
+    else if (p?.kind === 'weekly') { setRepeat(p.interval === 2 ? 'biweekly' : 'weekly'); setDays(p.days); }
+    setDate(s.startsOn);
+    setEndsOn(s.endsOn ?? '');
+    setSkipNoSchool(s.skipNoSchool);
+    setStartTime(s.startTime ?? '');
+    setEndTime(s.endTime ?? '');
+    setLocation(s.location);
+    setMsg(null);
+    showForm();
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -114,7 +158,13 @@ export function ManualEventsCard({ board }: { board: Board }) {
     setMsg(null);
     const common = { personId, title, startTime: startTime || undefined, endTime: endTime || undefined, location };
     try {
-      if (repeats) {
+      if (editing?.kind === 'event') {
+        await api('PUT', `/api/manual-events/${editing.id}`, { ...common, date });
+        setMsg({ text: `Saved ${title.trim()}.` });
+      } else if (editing?.kind === 'series') {
+        await api('PUT', `/api/event-series/${editing.id}`, { ...common, rrule: rule, startsOn: date, endsOn: endsOn || null, skipNoSchool });
+        setMsg({ text: `Saved ${title.trim()} (${describeRule(rule)}).` });
+      } else if (repeats) {
         await api('POST', '/api/event-series', { ...common, rrule: rule, startsOn: date, endsOn: endsOn || null, skipNoSchool });
         setMsg({ text: `Added ${title.trim()} (${describeRule(rule)}).` });
       } else {
@@ -125,7 +175,7 @@ export function ManualEventsCard({ board }: { board: Board }) {
     } catch (err) { setMsg({ text: (err as Error).message, error: true }); }
   };
 
-  const ready = !!title.trim() && (repeats ? !!rule && !!date : allDates.length > 0);
+  const ready = !!title.trim() && (repeats ? !!rule && !!date : editing ? !!date : allDates.length > 0);
 
   return (
     <section className="card">
@@ -134,7 +184,8 @@ export function ManualEventsCard({ board }: { board: Board }) {
         Add things that aren’t on a calendar, like the days Lincoln buys lunch. Pick several dates to add them all at
         once, or make it repeat.
       </p>
-      <form className="grid-form" onSubmit={submit}>
+      <form className="grid-form" onSubmit={submit} ref={formRef}>
+        {editing && <p className="editing-banner span-all">Editing “{editing.title}”</p>}
         <div className="field"><label htmlFor="me-who">Who</label>
           <select id="me-who" value={personId} onChange={e => setPersonId(e.target.value)}>
             {board.people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -147,7 +198,10 @@ export function ManualEventsCard({ board }: { board: Board }) {
           <legend>Repeats</legend>
           <div className="segmented" role="radiogroup" aria-label="Repeats">
             {([['none', 'Doesn’t repeat'], ['weekly', 'Every week'], ['biweekly', 'Every other week'], ['monthly', 'Monthly']] as Array<[Repeat, string]>).map(([v, label]) => (
-              <button key={v} type="button" role="radio" aria-checked={repeat === v} aria-pressed={repeat === v} onClick={() => setRepeat(v)}>{label}</button>
+              <button key={v} type="button" role="radio" aria-checked={repeat === v} aria-pressed={repeat === v}
+                // An edit keeps its kind: a one-off stays one-off, a repeating event keeps repeating.
+                disabled={editing ? (editing.kind === 'event') !== (v === 'none') : false}
+                onClick={() => setRepeat(v)}>{label}</button>
             ))}
           </div>
           {(repeat === 'weekly' || repeat === 'biweekly') && (
@@ -172,9 +226,9 @@ export function ManualEventsCard({ board }: { board: Board }) {
           <label htmlFor="me-date">{repeats ? 'Starts on' : 'Date'}</label>
           <div className="row wrap">
             <input id="me-date" type="date" value={date} onChange={e => setDate(e.target.value)} />
-            {!repeats && <button type="button" onClick={addDate} disabled={!date}>Add another date</button>}
+            {!repeats && !editing && <button type="button" onClick={addDate} disabled={!date}>Add another date</button>}
           </div>
-          {!repeats && allDates.length > 1 && (
+          {!repeats && !editing && allDates.length > 1 && (
             <div className="date-chips" aria-label="Dates">
               {allDates.map(d => (
                 <span key={d} className="date-chip">
@@ -204,8 +258,9 @@ export function ManualEventsCard({ board }: { board: Board }) {
           <input id="me-where" value={location} onChange={e => setLocation(e.target.value)} /></div>
         <div className="row span-all">
           <button className="primary" disabled={!ready}>
-            {repeats ? 'Add repeating event' : allDates.length > 1 ? `Add to ${allDates.length} days` : 'Add event'}
+            {editing ? 'Save changes' : repeats ? 'Add repeating event' : allDates.length > 1 ? `Add to ${allDates.length} days` : 'Add event'}
           </button>
+          {editing && <button type="button" onClick={() => { reset(); setMsg(null); }}>Cancel</button>}
         </div>
         {msg && <p className={`status span-all${msg.error ? ' error' : ''}`} role="status">{msg.text}</p>}
       </form>
@@ -213,7 +268,7 @@ export function ManualEventsCard({ board }: { board: Board }) {
       {series.length > 0 && <>
         <h3>Repeating</h3>
         <ul className="plain-list series-list">
-          {series.map(s => <SeriesRow key={s.id} board={board} series={s} />)}
+          {series.map(s => <SeriesRow key={s.id} board={board} series={s} onEdit={() => editSeries(s)} />)}
         </ul>
       </>}
 
@@ -221,10 +276,15 @@ export function ManualEventsCard({ board }: { board: Board }) {
       <ul className="plain-list">
         {events.length === 0 && <li className="muted">No one-off events coming up.</li>}
         {events.map(e => (
-          <li key={e.id}>
-            <span>{whoOf(board, e.personIds)}: {e.title}</span>
-            <span className="muted">{when(e)}{e.location ? ` · ${e.location}` : ''}</span>
-            <button className="link-btn" onClick={() => void api('DELETE', `/api/manual-events/${e.id}`)}>Remove</button>
+          <li key={e.id} className="event-row">
+            <div className="series-main">
+              <span>{whoOf(board, e.personIds)}: {e.title}</span>
+              <span className="muted small">{when(e)}{e.location ? ` · ${e.location}` : ''}</span>
+            </div>
+            <div className="row">
+              <button className="link-btn" onClick={() => editEvent(e)}>Edit</button>
+              <button className="link-btn danger-link" onClick={() => void api('DELETE', `/api/manual-events/${e.id}`)}>Remove</button>
+            </div>
           </li>
         ))}
       </ul>

@@ -361,3 +361,7 @@ textarea { width: 100%; border: 1px solid var(--line); background: var(--surface
 .series-main { display: grid; gap: 2px; min-width: 0; }
 .series-actions input[type=date] { width: auto; }
 .date-chip.skipped { background: color-mix(in srgb, var(--warn) 12%, var(--surface)); }
+
+.editing-banner { margin: 0; padding: 8px 12px; border-radius: 10px; font-weight: 700; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.segmented button:disabled { opacity: .4; cursor: not-allowed; }
+.plain-list li.event-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }

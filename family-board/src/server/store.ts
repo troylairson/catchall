@@ -229,6 +229,9 @@ export class Store {
     return this.all<CalendarEvent>(
       `SELECT * FROM event WHERE calendarId = 'manual' AND substr("end", 1, 10) >= :fromDate ORDER BY start`, { fromDate });
   }
+  manualEvent(id: string): CalendarEvent | undefined {
+    return this.all<CalendarEvent>(`SELECT * FROM event WHERE id = :id AND calendarId = 'manual'`, { id })[0];
+  }
   deleteManualEvent(id: string): boolean {
     return Number(this.db.prepare(`DELETE FROM event WHERE id = :id AND calendarId = 'manual'`).run({ id }).changes) > 0;
   }
