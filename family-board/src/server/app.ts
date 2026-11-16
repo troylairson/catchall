@@ -5,9 +5,10 @@ import { buildBoard } from './board';
 import { loadDemoData } from './seed';
 import { getWeather } from './weather';
 import { addDays, fromZoned, toZoned } from '../shared/dates';
+import { expandRule } from '../shared/recurrence';
 import type { CalendarSync } from './sync';
 import { isHexColor } from '../shared/colors';
-import { EVERYONE, MANUAL_CALENDAR, type Activity, type ActivityException, type Settings, type Trip } from '../shared/types';
+import { EVERYONE, MANUAL_CALENDAR, type EventSeries, type Activity, type ActivityException, type Settings, type Trip } from '../shared/types';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -152,7 +153,47 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
   // Events added by hand (e.g. "Buys lunch" on the days a kid buys lunch)
   app.get('/api/manual-events', c => {
     const today = toZoned(now(), store.settings().timezone).date;
-    return c.json({ events: store.manualEvents(addDays(today, -1)) });
+    return c.json({ events: store.manualEvents(addDays(today, -1)), series: store.eventSeries() });
+  });
+
+  // Repeating events added by hand
+  const checkSeries = (b: Partial<EventSeries> & { personId?: string }): Omit<EventSeries, 'id' | 'skipDates'> => {
+    req(b.personId && (b.personId === EVERYONE || store.person(b.personId)), 'Choose who it’s for.');
+    req(b.title && b.title.trim(), 'Describe the event.');
+    req(b.rrule && /^FREQ=(WEEKLY|MONTHLY)/.test(b.rrule), 'Choose how it repeats.');
+    try { expandRule(b.rrule, '2026-01-01', null, '2026-01-01', '2026-01-02'); } catch { throw new BadRequest('Choose which days it repeats on.'); }
+    req(b.startsOn && DATE.test(b.startsOn), 'Choose when it starts.');
+    req(!b.endsOn || (DATE.test(b.endsOn) && b.endsOn >= b.startsOn), 'The end date must be on or after the start date.');
+    const start = b.startTime || null;
+    const end = b.endTime || null;
+    req(!start || TIME.test(start), 'Times look like 11:30.');
+    req(!end || (start && TIME.test(end)), 'Add a start time before an end time.');
+    req(!end || !start || end > start, 'The end time must be after the start time.');
+    return {
+      personIds: b.personId === EVERYONE ? [] : [b.personId], title: b.title.trim(), rrule: b.rrule,
+      startsOn: b.startsOn, endsOn: b.endsOn || null, startTime: start, endTime: end,
+      location: b.location?.trim() ?? '', skipNoSchool: !!b.skipNoSchool,
+    };
+  };
+
+  app.post('/api/event-series', async c => {
+    const s = store.saveSeries({ ...checkSeries(await c.req.json()), skipDates: [] });
+    return changed(c, s, 201);
+  });
+
+  app.put('/api/event-series/:id', async c => {
+    const existing = store.oneSeries(c.req.param('id'));
+    if (!existing) return c.json({ error: 'That repeating event was already removed.' }, 404);
+    const body = await c.req.json<{ skipDates?: string[] }>();
+    req(Array.isArray(body.skipDates) && body.skipDates.every(d => DATE.test(d)), 'Dates look like 2026-11-20.');
+    const next = { ...existing, skipDates: [...new Set(body.skipDates)].sort() };
+    store.saveSeries(next);
+    return changed(c, next);
+  });
+
+  app.delete('/api/event-series/:id', c => {
+    if (!store.deleteSeries(c.req.param('id'))) return c.json({ error: 'That repeating event was already removed.' }, 404);
+    return changed(c, { ok: true });
   });
 
   app.post('/api/manual-events', async c => {

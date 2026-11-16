@@ -355,3 +355,9 @@ textarea { width: 100%; border: 1px solid var(--line); background: var(--surface
 .idle-due { font-size: 13px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--muted); flex: none; }
 .idle-due.overdue { background: color-mix(in srgb, var(--warn) 18%, var(--surface)); color: var(--warn); }
 .idle-more { font-size: 15px; color: var(--muted); padding-left: 34px; }
+
+/* Repeating events */
+.series-list li { display: grid; gap: 8px; align-items: start; }
+.series-main { display: grid; gap: 2px; min-width: 0; }
+.series-actions input[type=date] { width: auto; }
+.date-chip.skipped { background: color-mix(in srgb, var(--warn) 12%, var(--surface)); }

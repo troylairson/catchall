@@ -167,3 +167,61 @@ describe('events added by hand', () => {
     expect((await board()).events.some(e => e.title === 'Buys lunch')).toBe(true);
   });
 });
+
+describe('repeating events added by hand', () => {
+  const lunch = { personId: 'lincoln', title: 'Buys lunch', rrule: 'FREQ=WEEKLY;BYDAY=TU,TH', startsOn: '2026-11-09' };
+  const titled = (b: Board, title: string) => b.events.filter(e => e.title === title).map(e => e.start).sort();
+
+  it('repeats weekly from its start date, all day', async () => {
+    expect((await call('POST', '/api/event-series', lunch)).status).toBe(201);
+    const week = await board('?from=2026-11-09&to=2026-11-15');
+    expect(titled(week, 'Buys lunch')).toEqual(['2026-11-10', '2026-11-12']);
+    expect(week.events.find(e => e.title === 'Buys lunch')).toMatchObject({ allDay: true, personIds: ['lincoln'], calendarId: 'manual' });
+  });
+
+  it('skips days with no school when asked', async () => {
+    await call('POST', '/api/event-series', { ...lunch, skipNoSchool: true });
+    // Thanksgiving week: Tue 24 is a school day, Thu 26 is not.
+    expect(titled(await board('?from=2026-11-23&to=2026-11-29'), 'Buys lunch')).toEqual(['2026-11-24']);
+  });
+
+  it('keeps no-school days when not asked to skip them', async () => {
+    await call('POST', '/api/event-series', lunch);
+    expect(titled(await board('?from=2026-11-23&to=2026-11-29'), 'Buys lunch')).toEqual(['2026-11-24', '2026-11-26']);
+  });
+
+  it('skips single dates, and can bring them back', async () => {
+    const id = ((await call('POST', '/api/event-series', lunch)).body as { id: string }).id;
+    await call('PUT', `/api/event-series/${id}`, { skipDates: ['2026-11-12'] });
+    expect(titled(await board('?from=2026-11-09&to=2026-11-15'), 'Buys lunch')).toEqual(['2026-11-10']);
+    await call('PUT', `/api/event-series/${id}`, { skipDates: [] });
+    expect(titled(await board('?from=2026-11-09&to=2026-11-15'), 'Buys lunch')).toEqual(['2026-11-10', '2026-11-12']);
+  });
+
+  it('stops at its end date, and handles times and monthly rules', async () => {
+    await call('POST', '/api/event-series', { ...lunch, endsOn: '2026-11-10' });
+    expect(titled(await board('?from=2026-11-09&to=2026-11-15'), 'Buys lunch')).toEqual(['2026-11-10']);
+    await call('POST', '/api/event-series', {
+      personId: 'everyone', title: 'PTA meeting', rrule: 'FREQ=MONTHLY;BYDAY=1TU', startsOn: '2026-09-01', startTime: '18:30', endTime: '20:00',
+    });
+    const dec = (await board('?from=2026-11-30&to=2026-12-06')).events.find(e => e.title === 'PTA meeting');
+    // First Tuesday of December, 6:30 PM Eastern = 11:30 PM UTC.
+    expect(dec).toMatchObject({ allDay: false, start: '2026-12-01T23:30:00.000Z', end: '2026-12-02T01:00:00.000Z', personIds: [] });
+  });
+
+  it('is listed in Settings and removed in one step', async () => {
+    const id = ((await call('POST', '/api/event-series', lunch)).body as { id: string }).id;
+    expect(((await call('GET', '/api/manual-events')).body.series as unknown[]).length).toBe(1);
+    expect((await call('DELETE', `/api/event-series/${id}`)).status).toBe(200);
+    expect(titled(await board(), 'Buys lunch')).toEqual([]);
+  });
+
+  it('explains what’s missing or wrong', async () => {
+    const err = async (b: object) => (await call('POST', '/api/event-series', { ...lunch, ...b })).body.error;
+    expect(await err({ rrule: 'nonsense' })).toMatch(/how it repeats/);
+    expect(await err({ rrule: 'FREQ=WEEKLY;BYDAY=XX' })).toMatch(/which days/);
+    expect(await err({ endsOn: '2026-11-01' })).toMatch(/on or after the start/);
+    expect(await err({ startsOn: '' })).toMatch(/when it starts/);
+    expect(await err({ startTime: '12:00', endTime: '11:00' })).toMatch(/after the start time/);
+  });
+});

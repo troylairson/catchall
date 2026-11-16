@@ -1,6 +1,7 @@
 import type { Store } from './store';
 import { MANUAL_CALENDAR, type Board, type SyncProblem, type Weather } from '../shared/types';
 import { mergeDuplicates } from '../shared/assign';
+import { seriesEvents } from './series';
 import { answerFor, makeContext, occurrencesFor } from '../shared/recurrence';
 import { addDays, startOfWeek, toZoned } from '../shared/dates';
 
@@ -25,7 +26,11 @@ export function buildBoard(
   return {
     today, from, to, settings,
     people: store.people(),
-    events: mergeDuplicates(store.events(from, to).filter(e => e.calendarId === 'sample' || e.calendarId === MANUAL_CALENDAR || enabled.has(e.calendarId))),
+    events: mergeDuplicates([
+      ...store.events(from, to).filter(e => e.calendarId === 'sample' || e.calendarId === MANUAL_CALENDAR || enabled.has(e.calendarId)),
+      // A day of padding each side, matching how stored events are fetched.
+      ...seriesEvents(store.eventSeries(), addDays(from, -1), addDays(to, 1), settings.timezone, ctx),
+    ]),
     activities,
     occurrences: activities.flatMap(a => occurrencesFor(a, from, to, ctx)),
     answers: activities.map(a => answerFor(a, today, ctx)),

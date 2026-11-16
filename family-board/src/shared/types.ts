@@ -111,6 +111,27 @@ export interface CalendarEvent {
 /** calendarId for events added by hand in Settings. */
 export const MANUAL_CALENDAR = 'manual';
 
+/** An event added in Settings that repeats, such as "Buys lunch" every Tue & Thu.
+ *  Stored as a rule and turned into dated events when the board is built. */
+export interface EventSeries {
+  id: string;
+  /** Empty means Everyone (the Family row). */
+  personIds: string[];
+  title: string;
+  /** RFC 5545 RRULE body, e.g. "FREQ=WEEKLY;BYDAY=TU,TH". */
+  rrule: string;
+  startsOn: string;
+  endsOn: string | null;
+  /** 'HH:mm', or null for an all-day event. */
+  startTime: string | null;
+  endTime: string | null;
+  location: string;
+  /** Leave out breaks, holidays, snow days and summer. */
+  skipNoSchool: boolean;
+  /** Single dates removed from the series. */
+  skipDates: string[];
+}
+
 /** A connected calendar account. The password never leaves the server. */
 export interface CalendarAccount {
   id: string;
