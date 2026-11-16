@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main, claude/adoring-euler-49gc23]
-    paths: ['guitar-coach/**', '.github/workflows/pages.yml']
+    paths: ['guitar-coach/**', 'family-board/site/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -35,6 +35,9 @@ jobs:
         run: |
           mkdir -p _site/guitar
           cp -r guitar-coach/dist/. _site/guitar/
+          # Family Board's public home and privacy pages (for Google sign-in branding).
+          mkdir -p _site/family-board
+          cp -r family-board/site/. _site/family-board/
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8">
