@@ -3,6 +3,7 @@
 
 import type { CSSProperties } from 'react';
 import { EVERYONE, KIDS, type Board, type CalendarEvent, type Occurrence, type OccurrenceStatus, type Person, type Trip } from '../shared/types';
+import { describeRule } from '../shared/recurrence';
 import { daysBetween, formatTime, shortDate, timeToMinutes, toZoned, zoneAbbrev } from '../shared/dates';
 
 export interface DayItem {
@@ -71,7 +72,7 @@ function todoItems(board: Board, date: string): DayItem[] {
     .map(i => ({
       key: `t-${i.id}`, kind: 'todo' as const, itemId: i.id, done: i.done, personIds: i.personId ? [i.personId] : [],
       title: i.text, icon: '', allDay: true, minutes: -1, endMinutes: -1,
-      timeLabel: i.dueOn! < date ? `Overdue · was due ${shortDate(i.dueOn!)}` : 'To do',
+      timeLabel: i.dueOn! < date ? `Overdue · was due ${shortDate(i.dueOn!)}` : i.rrule ? `↻ ${describeRule(i.rrule)}` : 'To do',
       location: '', status: 'on' as const,
     }));
 }

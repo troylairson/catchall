@@ -69,6 +69,10 @@ const MIGRATIONS: string[] = [
      id TEXT PRIMARY KEY, personIds TEXT NOT NULL DEFAULT '[]', title TEXT NOT NULL, rrule TEXT NOT NULL,
      startsOn TEXT NOT NULL, endsOn TEXT, startTime TEXT, endTime TEXT, location TEXT NOT NULL DEFAULT '',
      skipNoSchool INTEGER NOT NULL DEFAULT 0, skipDates TEXT NOT NULL DEFAULT '[]');`,
+  // 5: repeating to-dos (chores).
+  `ALTER TABLE listItem ADD COLUMN rrule TEXT;
+   ALTER TABLE listItem ADD COLUMN repeatFrom TEXT;
+   ALTER TABLE listItem ADD COLUMN nextId TEXT;`,
 ];
 
 // Loaded through require because Vite and Vitest don't recognize node:sqlite yet.

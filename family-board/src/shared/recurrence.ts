@@ -79,6 +79,11 @@ export function expandRule(rrule: string, startsOn: string, endsOn: string | nul
   return rule.between(parseDate(from), end, true).map(formatDate);
 }
 
+/** The first date the rule produces after `after`, looking about a year ahead. */
+export function nextRuleDate(rrule: string, repeatFrom: string, after: string): string | null {
+  return expandRule(rrule, repeatFrom, null, addDays(after, 1), addDays(after, 400))[0] ?? null;
+}
+
 /** Dates the rule produces between `from` and `to` (inclusive), ignoring school days. */
 export function expandDates(activity: Activity, from: string, to: string): string[] {
   return expandRule(activity.rrule, activity.startsOn, activity.endsOn, from, to);

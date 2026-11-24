@@ -176,6 +176,12 @@ export interface ListItem {
   dueOn: string | null;
   createdAt: string;
   doneAt: string | null;
+  /** For a repeating to-do (a chore): its RRULE. Checking it off adds the next one. */
+  rrule?: string | null;
+  /** The date the repeat counts from, so "every other week" keeps its rhythm. */
+  repeatFrom?: string | null;
+  /** The follow-up created when this one was checked off, removed again if it's unchecked. */
+  nextId?: string | null;
 }
 
 /** A saved meal the family makes, for quick planning. */

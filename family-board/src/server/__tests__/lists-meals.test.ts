@@ -267,3 +267,54 @@ describe('editing events added by hand', () => {
     expect((await call('PUT', `/api/event-series/${id}`, { personId: 'lincoln', title: 'x', rrule: 'bad', startsOn: '2026-11-09' })).status).toBe(400);
   });
 });
+
+describe('repeating to-dos (chores)', () => {
+  // Today is Friday, Nov 13 2026.
+  const add = async (body: object) =>
+    (await call('POST', '/api/lists/family/items', body)).body.item as ListItem;
+  const open = async () => (await board()).items.filter(i => !i.done).map(i => [i.text, i.dueOn, i.personId]);
+
+  it('starts on the first matching day and adds the next one when checked off', async () => {
+    const feed = await add({ text: 'Feed the dog', personId: 'everly', rrule: 'FREQ=DAILY' });
+    expect(feed).toMatchObject({ dueOn: '2026-11-13', rrule: 'FREQ=DAILY', repeatFrom: '2026-11-13' });
+    await call('PUT', `/api/items/${feed.id}`, { done: true });
+    expect(await open()).toEqual([['Feed the dog', '2026-11-14', 'everly']]);
+  });
+
+  it('weekly chores land on their days, and only one is open at a time', async () => {
+    const trash = await add({ text: 'Take out trash', personId: 'lincoln', rrule: 'FREQ=WEEKLY;BYDAY=TU' });
+    expect(trash.dueOn).toBe('2026-11-17');
+    // Done early: the next one is the Tuesday after its due date, not this Tuesday again.
+    await call('PUT', `/api/items/${trash.id}`, { done: true });
+    expect(await open()).toEqual([['Take out trash', '2026-11-24', 'lincoln']]);
+  });
+
+  it('an overdue chore checked off today moves to the next day after today', async () => {
+    const water = await add({ text: 'Water plants', rrule: 'FREQ=WEEKLY;BYDAY=MO,TH', dueOn: '2026-11-02' });
+    expect(water.dueOn).toBe('2026-11-02');
+    await call('PUT', `/api/items/${water.id}`, { done: true });
+    expect(await open()).toEqual([['Water plants', '2026-11-16', null]]);
+  });
+
+  it('unchecking removes the follow-up it added', async () => {
+    const feed = await add({ text: 'Feed the dog', rrule: 'FREQ=DAILY' });
+    await call('PUT', `/api/items/${feed.id}`, { done: true });
+    await call('PUT', `/api/items/${feed.id}`, { done: false });
+    expect(await open()).toEqual([['Feed the dog', '2026-11-13', null]]);
+    // And checking again adds exactly one follow-up.
+    await call('PUT', `/api/items/${feed.id}`, { done: true });
+    expect(await open()).toEqual([['Feed the dog', '2026-11-14', null]]);
+  });
+
+  it('every other week keeps its rhythm from the start date', async () => {
+    const sheets = await add({ text: 'Change sheets', rrule: 'FREQ=WEEKLY;INTERVAL=2;BYDAY=SA', dueOn: '2026-11-14' });
+    expect(sheets.dueOn).toBe('2026-11-14');
+    await call('PUT', `/api/items/${sheets.id}`, { done: true });
+    expect(await open()).toEqual([['Change sheets', '2026-11-28', null]]);
+  });
+
+  it('rejects a broken repeat', async () => {
+    expect((await call('POST', '/api/lists/family/items', { text: 'x', rrule: 'often' })).body.error).toMatch(/how often/);
+    expect((await call('POST', '/api/lists/family/items', { text: 'x', rrule: 'FREQ=WEEKLY;BYDAY=ZZ' })).body.error).toMatch(/which days/);
+  });
+});
