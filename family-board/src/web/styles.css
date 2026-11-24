@@ -399,3 +399,6 @@ a.act-name:hover { text-decoration: underline; }
 .wall > .notices { grid-row: 2; }
 .wall > .wall-view { grid-row: 3; }
 .wall > .dock { grid-row: 4; }
+
+/* Repeating to-dos */
+.add-more .day-picker, .add-more .hint { flex-basis: 100%; }

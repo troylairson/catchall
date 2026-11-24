@@ -70,6 +70,17 @@ is generated into `$DATA_DIR/secret.key`).
   a person and a due date also shows in that person's column on that day, and stays on
   Today until it's done.
 
+## Chores and doubles
+
+- **Repeating to-dos:** on Family to-do, "Add a person, due date or repeat" offers every
+  day, every week or every other week on chosen days, or every month. Only the next one
+  is open; checking it off adds the following one, and unchecking takes that back.
+- **No doubles:** a calendar event that's clearly the same as a kid's activity (same kid,
+  same day, overlapping times or all day, and a shared key word such as "swim" or
+  "robotics") is hidden, and the activity shows instead, since it knows about school
+  days, trips and one-off changes. Generic words like "club", "practice" and "lessons"
+  don't count as a match on their own.
+
 ## Events added by hand
 
 Settings → Events adds one-off things that aren't on any calendar, such as the days a

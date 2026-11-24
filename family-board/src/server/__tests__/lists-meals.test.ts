@@ -267,3 +267,97 @@ describe('editing events added by hand', () => {
     expect((await call('PUT', `/api/event-series/${id}`, { personId: 'lincoln', title: 'x', rrule: 'bad', startsOn: '2026-11-09' })).status).toBe(400);
   });
 });
+
+describe('repeating to-dos (chores)', () => {
+  // Today is Friday, Nov 13 2026.
+  const add = async (body: object) =>
+    (await call('POST', '/api/lists/family/items', body)).body.item as ListItem;
+  const open = async () => (await board()).items.filter(i => !i.done).map(i => [i.text, i.dueOn, i.personId]);
+
+  it('starts on the first matching day and adds the next one when checked off', async () => {
+    const feed = await add({ text: 'Feed the dog', personId: 'everly', rrule: 'FREQ=DAILY' });
+    expect(feed).toMatchObject({ dueOn: '2026-11-13', rrule: 'FREQ=DAILY', repeatFrom: '2026-11-13' });
+    await call('PUT', `/api/items/${feed.id}`, { done: true });
+    expect(await open()).toEqual([['Feed the dog', '2026-11-14', 'everly']]);
+  });
+
+  it('weekly chores land on their days, and only one is open at a time', async () => {
+    const trash = await add({ text: 'Take out trash', personId: 'lincoln', rrule: 'FREQ=WEEKLY;BYDAY=TU' });
+    expect(trash.dueOn).toBe('2026-11-17');
+    // Done early: the next one is the Tuesday after its due date, not this Tuesday again.
+    await call('PUT', `/api/items/${trash.id}`, { done: true });
+    expect(await open()).toEqual([['Take out trash', '2026-11-24', 'lincoln']]);
+  });
+
+  it('an overdue chore checked off today moves to the next day after today', async () => {
+    const water = await add({ text: 'Water plants', rrule: 'FREQ=WEEKLY;BYDAY=MO,TH', dueOn: '2026-11-02' });
+    expect(water.dueOn).toBe('2026-11-02');
+    await call('PUT', `/api/items/${water.id}`, { done: true });
+    expect(await open()).toEqual([['Water plants', '2026-11-16', null]]);
+  });
+
+  it('unchecking removes the follow-up it added', async () => {
+    const feed = await add({ text: 'Feed the dog', rrule: 'FREQ=DAILY' });
+    await call('PUT', `/api/items/${feed.id}`, { done: true });
+    await call('PUT', `/api/items/${feed.id}`, { done: false });
+    expect(await open()).toEqual([['Feed the dog', '2026-11-13', null]]);
+    // And checking again adds exactly one follow-up.
+    await call('PUT', `/api/items/${feed.id}`, { done: true });
+    expect(await open()).toEqual([['Feed the dog', '2026-11-14', null]]);
+  });
+
+  it('every other week keeps its rhythm from the start date', async () => {
+    const sheets = await add({ text: 'Change sheets', rrule: 'FREQ=WEEKLY;INTERVAL=2;BYDAY=SA', dueOn: '2026-11-14' });
+    expect(sheets.dueOn).toBe('2026-11-14');
+    await call('PUT', `/api/items/${sheets.id}`, { done: true });
+    expect(await open()).toEqual([['Change sheets', '2026-11-28', null]]);
+  });
+
+  it('rejects a broken repeat', async () => {
+    expect((await call('POST', '/api/lists/family/items', { text: 'x', rrule: 'often' })).body.error).toMatch(/how often/);
+    expect((await call('POST', '/api/lists/family/items', { text: 'x', rrule: 'FREQ=WEEKLY;BYDAY=ZZ' })).body.error).toMatch(/which days/);
+  });
+});
+
+describe('no doubles: calendar events that repeat an activity', () => {
+  // Swim lessons for Lincoln, Mondays 4:30–5:15 PM; Robotics on Tuesdays 3:15–5:00 PM.
+  beforeEach(async () => {
+    await call('POST', '/api/activities', {
+      personId: 'lincoln', name: 'Swim lessons', icon: '🏊', rrule: 'FREQ=WEEKLY;BYDAY=MO', startTime: '16:30', endTime: '17:15', startsOn: '2026-09-01',
+    });
+    await call('POST', '/api/activities', {
+      personId: 'lincoln', name: 'Robotics', rrule: 'FREQ=WEEKLY;BYDAY=TU', startTime: '15:15', endTime: '17:00', startsOn: '2026-09-01', skipOn: ['no_school'],
+    });
+  });
+  const titles = async (q = '?from=2026-11-16&to=2026-11-22') => (await board(q)).events.map(e => e.title).sort();
+  const addEvent = (body: object) => call('POST', '/api/manual-events', body);
+
+  it('hides a calendar event that overlaps the activity and shares a key word', async () => {
+    await addEvent({ personId: 'lincoln', title: 'Lincoln Swim Lessons- 5:35-6:20PM', dates: ['2026-11-16'], startTime: '16:45' });
+    expect(await titles()).toEqual([]);
+  });
+
+  it('hides an all-day event on the activity’s day', async () => {
+    await addEvent({ personId: 'lincoln', title: 'Robotics Club', dates: ['2026-11-17'] });
+    expect(await titles()).toEqual([]);
+  });
+
+  it('keeps events at a different time, on another day, or about something else', async () => {
+    await addEvent({ personId: 'lincoln', title: 'Swim meet', dates: ['2026-11-16'], startTime: '08:00' });
+    await addEvent({ personId: 'lincoln', title: 'Lincoln swim lessons', dates: ['2026-11-18'], startTime: '16:30' });
+    await addEvent({ personId: 'lincoln', title: 'Dentist', dates: ['2026-11-16'], startTime: '16:30' });
+    await addEvent({ personId: 'everly', title: 'Swim lessons', dates: ['2026-11-16'], startTime: '16:30' });
+    expect(await titles()).toEqual(['Dentist', 'Lincoln swim lessons', 'Swim lessons', 'Swim meet']);
+  });
+
+  it('doesn’t treat generic words like “club” or “practice” as a match', async () => {
+    await addEvent({ personId: 'lincoln', title: 'Chess club', dates: ['2026-11-17'], startTime: '15:30' });
+    expect(await titles()).toEqual(['Chess club']);
+  });
+
+  it('keeps an event shared with someone the activity isn’t for', async () => {
+    const created = await call('POST', '/api/manual-events', { personId: 'everyone', title: 'Swim lessons', dates: ['2026-11-16'], startTime: '16:30' });
+    expect(created.status).toBe(201);
+    expect(await titles()).toEqual(['Swim lessons']);
+  });
+});

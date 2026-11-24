@@ -2,6 +2,7 @@
  *  several calendars (an invitation, or an event copied to a personal calendar). */
 
 import type { CalendarEvent, Person } from './types';
+import { addDays } from './dates';
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -48,4 +49,65 @@ export function mergeDuplicates(events: CalendarEvent[]): CalendarEvent[] {
     out.push(copy);
   }
   return out;
+}
+
+// ---------- Hiding calendar events that repeat a kid's activity ----------
+
+/** Words that say what kind of thing it is rather than which thing, so they don't count as a match. */
+const GENERIC = new Set([
+  'the', 'and', 'for', 'with', 'from', 'club', 'clubs', 'practice', 'practices', 'lesson', 'lessons', 'game', 'games',
+  'class', 'classes', 'team', 'meeting', 'meet', 'day', 'today', 'pick', 'pickup', 'drop', 'off', 'after', 'school',
+]);
+
+/** The distinctive words in a title, lowercased and roughly singular, without people's names. */
+export function keyWords(title: string, people: Person[]): Set<string> {
+  const names = new Set(people.map(p => p.name.trim().toLowerCase()));
+  const words = title.toLowerCase().replace(/[^\p{L}\s]/gu, ' ').split(/\s+/);
+  return new Set(words
+    .filter(w => w.length >= 3 && !GENERIC.has(w) && !names.has(w))
+    .map(w => w.replace(/(ing|es|s)$/, '')));
+}
+
+export interface ActivitySlot {
+  personId: string;
+  date: string;
+  name: string;
+  startMinutes: number;
+  endMinutes: number;
+}
+
+/** Drops calendar events that are the same thing as a kid's activity on the same day: the
+ *  same person, overlapping times (any time for an all-day event), and a shared key word,
+ *  e.g. "Lincoln Swim Lessons" and the "Swim lessons" activity. The activity stays, since it
+ *  knows about school days, trips and one-off changes. */
+export function hideActivityDuplicates(
+  events: CalendarEvent[], slots: ActivitySlot[], people: Person[],
+  localTime: (iso: string) => { date: string; minutes: number },
+): CalendarEvent[] {
+  if (!slots.length) return events;
+  const slotWords = new Map(slots.map(s => [s, keyWords(s.name, people)]));
+  return events.filter(e => {
+    if (!e.personIds.length) return true;
+    const words = keyWords(e.title, people);
+    if (!words.size) return true;
+    let dates: string[];
+    let start = 0;
+    let end = 24 * 60;
+    if (e.allDay) {
+      dates = [];
+      for (let d = e.start; d < e.end && dates.length < 31; d = addDays(d, 1)) dates.push(d);
+    } else {
+      const s = localTime(e.start);
+      const t = localTime(e.end);
+      dates = [s.date];
+      start = s.minutes;
+      end = t.date === s.date ? Math.max(t.minutes, start + 1) : 24 * 60;
+    }
+    const matches = (personId: string) => slots.some(s =>
+      s.personId === personId && dates.includes(s.date)
+      && (e.allDay || (start < s.endMinutes && s.startMinutes < end))
+      && [...slotWords.get(s)!].some(w => words.has(w)));
+    // Only hide it when it's a duplicate for everyone it belongs to.
+    return !e.personIds.every(matches);
+  });
 }

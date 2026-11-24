@@ -5,7 +5,7 @@ import { buildBoard } from './board';
 import { loadDemoData } from './seed';
 import { getWeather } from './weather';
 import { addDays, fromZoned, toZoned } from '../shared/dates';
-import { expandRule } from '../shared/recurrence';
+import { expandRule, nextRuleDate } from '../shared/recurrence';
 import type { CalendarSync } from './sync';
 import { isHexColor } from '../shared/colors';
 import { EVERYONE, KIDS, MANUAL_CALENDAR, type EventSeries, type Activity, type ActivityException, type Settings, type Trip } from '../shared/types';
@@ -372,23 +372,41 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
   const nowIso = () => now().toISOString();
 
   /** Adds an item unless the same text is already open on that list. */
-  const addItem = (listId: string, text: string, personId: string | null = null, dueOn: string | null = null) => {
+  const addItem = (listId: string, text: string, personId: string | null = null, dueOn: string | null = null,
+    repeat: { rrule: string; repeatFrom: string } | null = null) => {
     const existing = store.listItems(now()).find(i => i.listId === listId && !i.done && sameText(i.text, text));
     if (existing) return { item: existing, added: false };
     return {
-      item: store.saveListItem({ listId, text: text.trim(), done: false, personId, dueOn, createdAt: nowIso(), doneAt: null }),
+      item: store.saveListItem({
+        listId, text: text.trim(), done: false, personId, dueOn, createdAt: nowIso(), doneAt: null,
+        rrule: repeat?.rrule ?? null, repeatFrom: repeat?.repeatFrom ?? null, nextId: null,
+      }),
       added: true,
     };
   };
+  const todayDate = () => toZoned(now(), store.settings().timezone).date;
 
   app.post('/api/lists/:listId/items', async c => {
     const listId = c.req.param('listId');
     req(store.lists().some(l => l.id === listId), 'No such list.');
-    const body = await c.req.json<{ text?: string; personId?: string | null; dueOn?: string | null }>();
+    const body = await c.req.json<{ text?: string; personId?: string | null; dueOn?: string | null; rrule?: string | null }>();
     req(body.text && body.text.trim(), 'Type something to add.');
     req(!body.personId || store.person(body.personId), 'No such person.');
     req(!body.dueOn || DATE.test(body.dueOn), 'Due dates look like 2026-11-20.');
-    const { item, added } = addItem(listId, body.text, body.personId ?? null, body.dueOn ?? null);
+    let dueOn = body.dueOn ?? null;
+    let repeat: { rrule: string; repeatFrom: string } | null = null;
+    if (body.rrule) {
+      req(/^FREQ=(DAILY|WEEKLY|MONTHLY)/.test(body.rrule), 'Choose how often it repeats.');
+      // The repeat counts from the chosen due date, or today; the first one is due on the
+      // first matching day from then on.
+      const repeatFrom = dueOn ?? todayDate();
+      let first: string | null;
+      try { first = nextRuleDate(body.rrule, repeatFrom, addDays(repeatFrom, -1)); } catch { first = null; }
+      req(first, 'Choose which days it repeats on.');
+      dueOn = first;
+      repeat = { rrule: body.rrule, repeatFrom };
+    }
+    const { item, added } = addItem(listId, body.text, body.personId ?? null, dueOn, repeat);
     return changed(c, { item, added }, added ? 201 : 200);
   });
 
@@ -408,6 +426,24 @@ export function createApp({ store, bus = new ChangeBus(), now = () => new Date()
       done,
       doneAt: done ? (item.done ? item.doneAt : nowIso()) : null,
     };
+    if (item.rrule && item.repeatFrom && done && !item.done && !item.nextId) {
+      // Checking off a chore adds the next one: the first matching day after today, or
+      // after its due date if that's later (so doing it early doesn't skip ahead twice).
+      const after = item.dueOn && item.dueOn > todayDate() ? item.dueOn : todayDate();
+      const nextDue = nextRuleDate(item.rrule, item.repeatFrom, after);
+      if (nextDue) {
+        const follow = store.saveListItem({
+          listId: item.listId, text: next.text, done: false, personId: next.personId, dueOn: nextDue,
+          createdAt: nowIso(), doneAt: null, rrule: item.rrule, repeatFrom: item.repeatFrom, nextId: null,
+        });
+        next.nextId = follow.id;
+      }
+    } else if (!done && item.done && item.nextId) {
+      // Unchecking undoes the follow-up, unless someone has already checked that off too.
+      const follow = store.listItem(item.nextId);
+      if (follow && !follow.done) store.deleteListItem(follow.id);
+      next.nextId = null;
+    }
     store.saveListItem(next);
     return changed(c, next);
   });
