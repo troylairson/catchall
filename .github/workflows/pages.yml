@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main, claude/adoring-euler-49gc23]
-    paths: ['guitar-coach/**', 'family-board/site/**', '.github/workflows/pages.yml']
+    paths: ['guitar-coach/**', 'family-board/site/**', 'fraction-pocket/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -31,6 +31,9 @@ jobs:
           npm ci
           npm test
           npm run build
+      - name: Test Fraction Pocket
+        working-directory: fraction-pocket
+        run: npm test
       - name: Assemble site (app lives under /guitar/)
         run: |
           mkdir -p _site/guitar
@@ -38,6 +41,9 @@ jobs:
           # Family Board's public home and privacy pages (for Google sign-in branding).
           mkdir -p _site/family-board
           cp -r family-board/site/. _site/family-board/
+          # Fraction Pocket is static files, no build step.
+          mkdir -p _site/fractions
+          cp -r fraction-pocket/index.html fraction-pocket/style.css fraction-pocket/src _site/fractions/
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8">
