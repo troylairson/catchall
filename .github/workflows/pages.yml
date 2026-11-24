@@ -43,7 +43,7 @@ jobs:
           cp -r family-board/site/. _site/family-board/
           # Fraction Pocket is static files, no build step.
           mkdir -p _site/fractions
-          cp -r fraction-pocket/index.html fraction-pocket/style.css fraction-pocket/src _site/fractions/
+          cp -r fraction-pocket/index.html fraction-pocket/style.css fraction-pocket/manifest.webmanifest fraction-pocket/src fraction-pocket/icons _site/fractions/
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8">
