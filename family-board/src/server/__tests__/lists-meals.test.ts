@@ -318,3 +318,46 @@ describe('repeating to-dos (chores)', () => {
     expect((await call('POST', '/api/lists/family/items', { text: 'x', rrule: 'FREQ=WEEKLY;BYDAY=ZZ' })).body.error).toMatch(/which days/);
   });
 });
+
+describe('no doubles: calendar events that repeat an activity', () => {
+  // Swim lessons for Lincoln, Mondays 4:30–5:15 PM; Robotics on Tuesdays 3:15–5:00 PM.
+  beforeEach(async () => {
+    await call('POST', '/api/activities', {
+      personId: 'lincoln', name: 'Swim lessons', icon: '🏊', rrule: 'FREQ=WEEKLY;BYDAY=MO', startTime: '16:30', endTime: '17:15', startsOn: '2026-09-01',
+    });
+    await call('POST', '/api/activities', {
+      personId: 'lincoln', name: 'Robotics', rrule: 'FREQ=WEEKLY;BYDAY=TU', startTime: '15:15', endTime: '17:00', startsOn: '2026-09-01', skipOn: ['no_school'],
+    });
+  });
+  const titles = async (q = '?from=2026-11-16&to=2026-11-22') => (await board(q)).events.map(e => e.title).sort();
+  const addEvent = (body: object) => call('POST', '/api/manual-events', body);
+
+  it('hides a calendar event that overlaps the activity and shares a key word', async () => {
+    await addEvent({ personId: 'lincoln', title: 'Lincoln Swim Lessons- 5:35-6:20PM', dates: ['2026-11-16'], startTime: '16:45' });
+    expect(await titles()).toEqual([]);
+  });
+
+  it('hides an all-day event on the activity’s day', async () => {
+    await addEvent({ personId: 'lincoln', title: 'Robotics Club', dates: ['2026-11-17'] });
+    expect(await titles()).toEqual([]);
+  });
+
+  it('keeps events at a different time, on another day, or about something else', async () => {
+    await addEvent({ personId: 'lincoln', title: 'Swim meet', dates: ['2026-11-16'], startTime: '08:00' });
+    await addEvent({ personId: 'lincoln', title: 'Lincoln swim lessons', dates: ['2026-11-18'], startTime: '16:30' });
+    await addEvent({ personId: 'lincoln', title: 'Dentist', dates: ['2026-11-16'], startTime: '16:30' });
+    await addEvent({ personId: 'everly', title: 'Swim lessons', dates: ['2026-11-16'], startTime: '16:30' });
+    expect(await titles()).toEqual(['Dentist', 'Lincoln swim lessons', 'Swim lessons', 'Swim meet']);
+  });
+
+  it('doesn’t treat generic words like “club” or “practice” as a match', async () => {
+    await addEvent({ personId: 'lincoln', title: 'Chess club', dates: ['2026-11-17'], startTime: '15:30' });
+    expect(await titles()).toEqual(['Chess club']);
+  });
+
+  it('keeps an event shared with someone the activity isn’t for', async () => {
+    const created = await call('POST', '/api/manual-events', { personId: 'everyone', title: 'Swim lessons', dates: ['2026-11-16'], startTime: '16:30' });
+    expect(created.status).toBe(201);
+    expect(await titles()).toEqual(['Swim lessons']);
+  });
+});

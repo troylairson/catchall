@@ -1,9 +1,9 @@
 import type { Store } from './store';
 import { MANUAL_CALENDAR, type Board, type SyncProblem, type Weather } from '../shared/types';
-import { mergeDuplicates } from '../shared/assign';
+import { hideActivityDuplicates, mergeDuplicates } from '../shared/assign';
 import { seriesEvents } from './series';
 import { answerFor, makeContext, occurrencesFor } from '../shared/recurrence';
-import { addDays, startOfWeek, toZoned } from '../shared/dates';
+import { addDays, startOfWeek, timeToMinutes, toZoned } from '../shared/dates';
 
 /** Everything a screen needs for a date range, in one response. The default range is
  *  the current Monday–Sunday week, which covers the Today, Week and Kids views. */
@@ -26,16 +26,26 @@ export function buildBoard(
   const activities = store.activities();
   const enabled = new Set(store.calendarSources().filter(c => c.enabled).map(c => c.id));
 
+  const occurrences = activities.flatMap(a => occurrencesFor(a, from, to, ctx));
+
   return {
     today, from, to, settings,
     people,
-    events: mergeDuplicates([
-      ...store.events(from, to).filter(e => e.calendarId === 'sample' || e.calendarId === MANUAL_CALENDAR || enabled.has(e.calendarId)),
-      // A day of padding each side, matching how stored events are fetched.
-      ...seriesEvents(store.eventSeries(), addDays(from, -1), addDays(to, 1), settings.timezone, ctx),
-    ]),
+    events: hideActivityDuplicates(
+      mergeDuplicates([
+        ...store.events(from, to).filter(e => e.calendarId === 'sample' || e.calendarId === MANUAL_CALENDAR || enabled.has(e.calendarId)),
+        // A day of padding each side, matching how stored events are fetched.
+        ...seriesEvents(store.eventSeries(), addDays(from, -1), addDays(to, 1), settings.timezone, ctx),
+      ]),
+      occurrences.map(o => ({
+        personId: o.personId, date: o.date, name: o.name,
+        startMinutes: timeToMinutes(o.startTime), endMinutes: timeToMinutes(o.endTime),
+      })),
+      people,
+      iso => toZoned(iso, settings.timezone),
+    ),
     activities,
-    occurrences: activities.flatMap(a => occurrencesFor(a, from, to, ctx)),
+    occurrences,
     answers: activities.map(a => answerFor(a, today, ctx)),
     schoolDays: schoolDays.filter(d => d.date >= from && d.date <= addDays(to, 60)),
     schoolYear,
