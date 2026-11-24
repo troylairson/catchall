@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fraction Pocket</title>
+  <meta name="description" content="A pocket fraction calculator. Add, subtract, multiply and divide fractions and mixed numbers.">
+  <meta name="theme-color" content="#eceef3" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d1016" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23232836'/%3E%3Ctext x='16' y='13' font-family='monospace' font-size='11' font-weight='700' fill='%23f0a23b' text-anchor='middle'%3E1%3C/text%3E%3Crect x='9' y='15' width='14' height='2' fill='%23f0a23b'/%3E%3Ctext x='16' y='27' font-family='monospace' font-size='11' font-weight='700' fill='%23f0a23b' text-anchor='middle'%3E2%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <section class="device" aria-label="Fraction calculator">
+      <div class="brand">
+        <span class="name">Fraction Pocket</span>
+        <span class="model">FP-12</span>
+      </div>
+
+      <div class="screen">
+        <div class="ann" aria-hidden="true">
+          <span id="ann-mode">MIXED</span>
+          <span id="ann-op"></span>
+          <span id="ann-err">ERR</span>
+        </div>
+        <div class="expr" id="expr"></div>
+        <div class="main" id="main" role="status" aria-live="polite"></div>
+        <div class="sub" id="sub"></div>
+      </div>
+
+      <div class="keys" id="keys">
+        <button class="fn" data-k="C" title="Clear (Esc)">C</button>
+        <button class="fn" data-k="back" aria-label="Backspace" title="Backspace">⌫</button>
+        <button class="fn small" data-k="dc" aria-label="Switch between mixed numbers and improper fractions" title="Mixed / improper (D)">a b/c<span>⇄</span>d/c</button>
+        <button class="op" data-k="/" aria-label="Divide" title="Divide (/)">÷</button>
+
+        <button data-k="7">7</button>
+        <button data-k="8">8</button>
+        <button data-k="9">9</button>
+        <button class="op" data-k="*" aria-label="Multiply" title="Multiply (*)">×</button>
+
+        <button data-k="4">4</button>
+        <button data-k="5">5</button>
+        <button data-k="6">6</button>
+        <button class="op" data-k="-" aria-label="Subtract" title="Subtract (-)">−</button>
+
+        <button data-k="1">1</button>
+        <button data-k="2">2</button>
+        <button data-k="3">3</button>
+        <button class="op" data-k="+" aria-label="Add" title="Add (+)">+</button>
+
+        <button class="fn" data-k="neg" aria-label="Change sign" title="Change sign (N)">±</button>
+        <button data-k="0">0</button>
+        <button class="frac" data-k="frac" aria-label="Fraction key: move to the next part of the fraction" title="Next part of the fraction (Space)">a b/c</button>
+        <button class="eq" data-k="=" aria-label="Equals" title="Equals (Enter)">=</button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="howto" aria-labelledby="howto-h">
+        <h2 id="howto-h">How to enter a fraction</h2>
+        <ol>
+          <li>Type the top number, press <kbd>a b/c</kbd>, then type the bottom number. <span class="eg">3 <kbd>a b/c</kbd> 4 → ¾</span></li>
+          <li>For a mixed number, type the whole number and press <kbd>a b/c</kbd> before each part. <span class="eg">1 <kbd>a b/c</kbd> 3 <kbd>a b/c</kbd> 4 → 1¾</span></li>
+          <li><kbd>a b/c ⇄ d/c</kbd> switches answers between 1¾ and 7/4.</li>
+        </ol>
+        <p class="kbd-hint">Keyboard: digits, <kbd>Space</kbd> for a b/c, <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd>, <kbd>Enter</kbd>, <kbd>Backspace</kbd>, <kbd>Esc</kbd> to clear.</p>
+      </section>
+
+      <section class="history" aria-labelledby="hist-h">
+        <div class="hist-head">
+          <h2 id="hist-h">History</h2>
+          <button id="clear-history" class="link" hidden>Clear</button>
+        </div>
+        <p class="empty" id="hist-empty">Answers show up here. Tap one to use it again.</p>
+        <ol id="history"></ol>
+      </section>
+    </aside>
+  </main>
+
+  <script src="src/fraction.js"></script>
+  <script src="src/calc.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>

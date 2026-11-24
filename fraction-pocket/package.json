@@ -1,0 +1,9 @@
+{
+  "name": "fraction-pocket",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A pocket fraction calculator with an a b/c key. Static files, no build step.",
+  "scripts": {
+    "test": "node --test"
+  }
+}
