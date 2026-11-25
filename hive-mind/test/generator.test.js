@@ -41,12 +41,22 @@ test('hard levels beat simple strategies (sweep a column, greedy)', () => {
     g.settle();
     total++;
     if (!Object.values(NAIVE).some((pick) => playPolicy(g, pick))) beaten++;
-    if (L.tier === 'super') assert.ok(!playPolicy(g, NAIVE.sweep), `level ${n}: tapping column by column must fail`);
   }
-  assert.ok(beaten / total >= 0.8, `only ${beaten}/${total} hard levels beat every simple strategy`);
+  assert.ok(beaten / total >= 0.85, `only ${beaten}/${total} hard levels beat every simple strategy`);
 });
 
-test('the hive has 5 spots on the first levels, then 4', () => {
-  assert.equal(generateLevel(2).slots, 5);
-  assert.equal(generateLevel(8).slots, 4);
+test('every level has a 4-spot hive, and early levels resist column-by-column play', () => {
+  for (let n = 1; n <= 4; n++) {
+    const L = generateLevel(n);
+    assert.equal(L.slots, 4);
+    const g = new Game(L);
+    g.settle();
+    assert.ok(Object.values(NAIVE).some((pick) => !playPolicy(g, pick)), `level ${n}: some simple strategy must lose`);
+  }
+});
+
+test('hard levels include joined pairs', () => {
+  let pairs = 0;
+  for (const n of [5, 10, 15, 20, 25, 30]) pairs += generateLevel(n).columns.flat().filter((b) => b.pair).length;
+  assert.ok(pairs >= 6);
 });

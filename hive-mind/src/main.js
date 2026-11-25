@@ -339,15 +339,31 @@ function drawBox(c, x, y, r, colorIdx, n, { hidden = false, dim = false, scale =
   c.restore();
 }
 
-function drawLinkBar(c, x, y1, y2, r) {
+function drawLinkBar(c, x1, y1, x2, y2, r) {
   c.save();
   c.lineCap = 'round';
   c.strokeStyle = '#8a5a1e';
   c.lineWidth = r * 0.42;
-  c.beginPath(); c.moveTo(x, y1); c.lineTo(x, y2); c.stroke();
+  c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
   c.strokeStyle = '#d99a3a';
   c.lineWidth = r * 0.22;
-  c.beginPath(); c.moveTo(x, y1); c.lineTo(x, y2); c.stroke();
+  c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+  c.restore();
+}
+
+function drawLock(c, x, y, s) {
+  c.save();
+  c.translate(x, y);
+  c.fillStyle = '#5b3a12';
+  c.strokeStyle = '#fff6e1';
+  c.lineWidth = 2;
+  c.beginPath(); c.arc(0, 0, s, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.strokeStyle = '#ffd77a';
+  c.lineWidth = s * 0.22;
+  c.beginPath(); c.arc(0, -s * 0.18, s * 0.3, Math.PI, 0); c.stroke();
+  c.fillStyle = '#ffd77a';
+  roundRect(c, -s * 0.45, -s * 0.18, s * 0.9, s * 0.65, s * 0.12);
+  c.fill();
   c.restore();
 }
 
@@ -383,34 +399,57 @@ function drawSlots(c, now) {
 function drawStack(c, now) {
   const r = lay.r;
   const room = game.freeSlots();
-  for (let k = 0; k < L.columns.length; k++) {
+  const pos = L.columns.map((boxes, k) => {
     const col = lay.cols[k];
-    const ptr = game.ptr[k];
-    const boxes = L.columns[k];
     let dx = 0;
     const sh = colShake[k];
     if (sh && now - sh < 350) dx = Math.sin((now - sh) / 25) * 6 * (1 - (now - sh) / 350);
     const slide = colShift[k] ? 1 - ease(Math.min(1, (now - colShift[k]) / 200)) : 0;
     const off = slide * (col.y2 - col.y);
-    const front = boxes[ptr], next = boxes[ptr + 1];
+    return { x: col.x + dx, y: col.y + off, y2: col.y2 + off, ptr: game.ptr[k] };
+  });
+  // Where a swarm is drawn: the front row, the row behind it, or not at all.
+  const at = (k, i) => {
+    const p = pos[k];
+    if (i === p.ptr) return { x: p.x, y: p.y };
+    if (i === p.ptr + 1) return { x: p.x, y: p.y2 };
+    return null;
+  };
+  // Bars for joined pairs go behind the swarms.
+  L.columns.forEach((boxes, k) => {
+    for (const i of [pos[k].ptr, pos[k].ptr + 1]) {
+      const b = boxes[i];
+      if (!b || !b.pair) continue;
+      const a = at(k, i), o = at(b.pair[0], b.pair[1]);
+      if (o) { if (b.pair[0] > k) drawLinkBar(c, a.x, a.y, o.x, o.y, r); }
+      else {
+        // Partner is buried deeper: a short stub that stops halfway into the gap.
+        const reach = r + Math.max(4, (lay.cols[k].w - 2 * r) * 0.3);
+        drawLinkBar(c, a.x, a.y, a.x + Math.sign(b.pair[0] - k) * reach, a.y, r);
+      }
+    }
+  });
+  L.columns.forEach((boxes, k) => {
+    const p = pos[k];
+    const front = boxes[p.ptr], next = boxes[p.ptr + 1];
     if (next) {
-      const ny = col.y2 + off;
-      if (front && front.link) drawLinkBar(c, col.x + dx, col.y + off, ny, r);
-      drawBox(c, col.x + dx, ny, r * 0.86, next.c, next.n, { hidden: !!next.hidden, alpha: 0.95, dim: true });
+      if (front && front.link) drawLinkBar(c, p.x, p.y, p.x, p.y2, r);
+      drawBox(c, p.x, p.y2, r * 0.86, next.c, next.n, { hidden: !!next.hidden, alpha: 0.95, dim: true });
     }
     if (front) {
-      const need = front.link ? 2 : 1;
-      drawBox(c, col.x + dx, col.y + off, r, front.c, front.n, { dim: need > room });
+      const locked = game.locked(k);
+      drawBox(c, p.x, p.y, r, front.c, front.n, { dim: locked || game.need(k) > room });
+      if (locked) drawLock(c, p.x + r * 0.62, p.y - r * 0.62, r * 0.3);
     }
-    const more = boxes.length - ptr - 2;
+    const more = boxes.length - p.ptr - 2;
     if (more > 0) {
       c.font = `600 ${Math.round(r * 0.42)}px ${FONT}`;
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       c.fillStyle = 'rgba(110,70,20,0.75)';
-      c.fillText('+' + more, col.x, col.y2 + lay.hh * 0.5 + 10);
+      c.fillText('+' + more, lay.cols[k].x, lay.cols[k].y2 + lay.hh * 0.5 + 10);
     }
-  }
+  });
 }
 
 // ---------- bees ----------
@@ -601,22 +640,27 @@ canvas.addEventListener('pointerdown', (e) => {
 
 function tapColumn(k) {
   const now = performance.now();
-  if (!game.front(k)) return;
+  const front = game.front(k);
+  if (!front) return;
   if (!game.canTap(k)) {
     colShake[k] = now;
+    if (game.locked(k)) {
+      colShake[front.pair[0]] = now;
+      showHint('Joined swarms leave together, once both are at the front', null, 3500);
+    }
     sfx('error');
     haptic('error');
     return;
   }
-  const col = lay.cols[k];
   const placed = game.tap(k);
-  placed.forEach((p, i) => {
+  for (const p of placed) {
     const dur = 230;
-    const y0 = i === 0 ? col.y : col.y2;
+    const col = lay.cols[p.col];
+    const y0 = p.row === 0 ? col.y : col.y2;
     flyers.push({ c: p.box.c, n: p.box.n, x0: col.x, y0, x1: lay.slots[p.slot].x, y1: lay.slots[p.slot].y, start: now, dur });
     vSlots[p.slot] = { id: p.id, c: p.box.c, n: p.box.n, arriveAt: now + dur };
-  });
-  colShift[k] = now;
+    colShift[p.col] = now;
+  }
   tapsMade++;
   sfx('tap');
   haptic('tap');
@@ -625,11 +669,17 @@ function tapColumn(k) {
 }
 
 function maybeLinkHint() {
-  if (prefs.seenLink || !hintEl.hidden) return;
-  if (!L.columns.some((_, k) => game.front(k)?.link)) return;
-  prefs.seenLink = true;
-  save();
-  showHint('Linked swarms leave together and need 2 free spots', null, 5000);
+  if (!hintEl.hidden) return;
+  const fronts = L.columns.map((_, k) => game.front(k));
+  if (!prefs.seenJoin && fronts.some((b) => b && b.pair)) {
+    prefs.seenJoin = true;
+    save();
+    showHint('Joined swarms leave together, once both are at the front', null, 5000);
+  } else if (!prefs.seenLink && fronts.some((b) => b && b.link)) {
+    prefs.seenLink = true;
+    save();
+    showHint('Linked swarms leave together and need 2 free spots', null, 5000);
+  }
 }
 
 // ---------- hints ----------
@@ -684,8 +734,7 @@ async function startLevel(n) {
   hideHint();
   if (n === 1) showHint('Tap a swarm to send its bees out', 'tap');
   else if (n === 2) showHint('Bees can only reach blocks on the outside edge', null, 5000);
-  else if (n === 3) showHint('Only 5 swarms fit in the hive, so choose carefully!', null, 5000);
-  else if (n === 4) showHint('From here on the hive has just 4 spots. Plan your order!', null, 5000);
+  else if (n === 3) showHint('Only 4 swarms fit in the hive. Plan your order!', null, 5000);
   state = 'play';
   maybeLinkHint();
   prefetch(n + 1);
@@ -699,7 +748,9 @@ function winLevel() {
   prefs.level = Math.max(prefs.level, n + 1);
   save();
   prefetch(n + 1);
+  const won = L;
   setTimeout(() => {
+    if (L !== won || state !== 'won') return; // a different level started meanwhile
     const mini = miniPicture(L, 150);
     openModal(`Level ${n} done!`, [mini, para(`You uncovered: ${L.name}`)], [
       { label: 'Next level', fn: () => startLevel(n + 1) },
@@ -840,8 +891,9 @@ $('howBtn').addEventListener('click', () => {
     'Tap a numbered swarm to move it into the hive.',
     'Its bees fly out one by one, each grabbing a block of their color.',
     'Bees can only reach blocks on the outside edge of the picture.',
-    'The hive holds 4 swarms (5 on the first levels). A swarm leaves once all its bees are out.',
+    'The hive holds 4 swarms. A swarm leaves once all its bees are out.',
     'If every spot is waiting on blocks nobody can reach, the hive jams.',
+    'Linked or joined swarms leave together. Joined ones wait until both are at the front.',
     'Clear every block to finish the level.',
   ]) { const li = document.createElement('li'); li.textContent = t; ol.append(li); }
   openModal('How to play', [ol], [{ label: 'Got it', fn: closeModal }]);

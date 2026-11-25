@@ -1,6 +1,6 @@
 // Offline support: try the network first so updates show up right away,
 // and fall back to the cached copy when offline.
-const CACHE = 'hive-mind-v2';
+const CACHE = 'hive-mind-v3';
 const SHELL = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'src/main.js', 'src/engine.js', 'src/generator.js', 'src/pictures.js', 'src/palette.js',
