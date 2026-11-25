@@ -1,0 +1,10 @@
+{
+  "name": "hive-mind",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Hive Mind: a bee color-sorting puzzle. Static files, no build step.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
