@@ -132,12 +132,19 @@ export class Game {
   need(col) {
     const b = this.front(col);
     if (!b) return 0;
-    return b.link ? 2 : 1;
+    return b.link || b.pair ? 2 : 1;
+  }
+
+  // A joined swarm can only leave once its partner in the next column is
+  // at the front too.
+  locked(col) {
+    const b = this.front(col);
+    return !!(b && b.pair && this.ptr[b.pair[0]] !== b.pair[1]);
   }
 
   canTap(col) {
     const n = this.need(col);
-    return n > 0 && this.freeSlots() >= n;
+    return n > 0 && !this.locked(col) && this.freeSlots() >= n;
   }
 
   legalTaps() {
@@ -146,18 +153,22 @@ export class Game {
     return out;
   }
 
-  // Move the front swarm (and its linked partner) into free slots.
-  // Returns [{slot, box, id}] or null if not allowed.
+  // Move the front swarm (and its linked or joined partner) into free slots.
+  // Returns [{slot, box, id, col, row}] or null if not allowed. `row` is 0 for
+  // a swarm that was at the front of its column, 1 for the one behind it.
   tap(col) {
     if (!this.canTap(col)) return null;
-    const n = this.need(col);
+    const b = this.front(col);
+    const take = [[col, 0]];
+    if (b.link) take.push([col, 1]);
+    if (b.pair) take.push([b.pair[0], 0]);
     const placed = [];
-    for (let k = 0; k < n; k++) {
-      const box = this.cols[col][this.ptr[col]++];
+    for (const [c, row] of take) {
+      const box = this.cols[c][this.ptr[c]++];
       const slot = this.slots.indexOf(null);
       const id = this.nextId++;
       this.slots[slot] = { c: box.c, n: box.n, id };
-      placed.push({ slot, box, id });
+      placed.push({ slot, box, id, col: c, row });
     }
     return placed;
   }

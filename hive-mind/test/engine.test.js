@@ -54,3 +54,22 @@ test('solver finds an order', () => {
   const { solution } = solve(lvl);
   assert.ok(solution && replay(lvl, solution));
 });
+
+test('joined swarms are locked until both are at the front, then leave together', () => {
+  const lvl = ring();
+  // column 0: [0:3, 0:2*], column 1: [0:3*, 1:1]; * = joined
+  lvl.columns = [[{ c: 0, n: 3 }, { c: 0, n: 2, pair: [1, 0] }], [{ c: 0, n: 3, pair: [0, 1] }, { c: 1, n: 1 }]];
+  const g = new Game(lvl);
+  assert.ok(g.locked(1));
+  assert.equal(g.canTap(1), false);
+  g.tap(0);
+  g.settle();
+  assert.ok(!g.locked(1) && !g.locked(0));
+  const placed = g.tap(1);
+  assert.deepEqual(placed.map((p) => [p.col, p.row]), [[1, 0], [0, 0]]);
+  g.settle();
+  assert.equal(g.ptr.join(), '2,1');
+  g.tap(1);
+  g.settle();
+  assert.ok(g.won());
+});
