@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateLevel, tierOf } from '../src/generator.js';
-import { replay } from '../src/engine.js';
+import { replay, Game, NAIVE, playPolicy } from '../src/engine.js';
 
 test('tiers: every 5th level hard, every 10th super hard', () => {
   assert.equal(tierOf(1), 'normal');
@@ -31,4 +31,22 @@ test('levels 1-120 are solvable and well formed', () => {
     assert.deepEqual(ants, counts, `level ${n}: bees match blocks per color`);
     assert.ok(L.cells.filter((c) => c >= 0).length <= 800, `level ${n} size`);
   }
+});
+
+test('hard levels beat simple strategies (sweep a column, greedy)', () => {
+  let beaten = 0, total = 0;
+  for (let n = 10; n <= 100; n += 5) {
+    const L = generateLevel(n);
+    const g = new Game(L);
+    g.settle();
+    total++;
+    if (!Object.values(NAIVE).some((pick) => playPolicy(g, pick))) beaten++;
+    if (L.tier === 'super') assert.ok(!playPolicy(g, NAIVE.sweep), `level ${n}: tapping column by column must fail`);
+  }
+  assert.ok(beaten / total >= 0.8, `only ${beaten}/${total} hard levels beat every simple strategy`);
+});
+
+test('the hive has 5 spots on the first levels, then 4', () => {
+  assert.equal(generateLevel(2).slots, 5);
+  assert.equal(generateLevel(8).slots, 4);
 });
