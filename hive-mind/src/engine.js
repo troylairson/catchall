@@ -3,7 +3,7 @@
 // The board is a grid of colored blocks (-1 = empty). A bee can only reach a
 // block that touches open air connected to the outside of the picture.
 // Swarms (numbered boxes) wait in columns; tapping a column's front swarm moves
-// it into one of SLOT_COUNT hive slots. Every tick, each slot sends one bee to
+// it into one of the hive slots (SLOT_COUNT unless the level says otherwise). Every tick, each slot sends one bee to
 // the nearest reachable block of its color. A slot empties when all its bees
 // are out. You win when the board is clear; you are stuck when no slot can
 // send a bee and no swarm can be moved into a slot.
@@ -51,7 +51,7 @@ export class Game {
     this.frontier = Array.from({ length: level.colorCount }, () => []);
     this.cols = level.columns;
     this.ptr = new Array(level.columns.length).fill(0);
-    this.slots = new Array(SLOT_COUNT).fill(null);
+    this.slots = new Array(level.slots || SLOT_COUNT).fill(null);
     this.nextId = 1;
     // Seed open air from the border.
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -166,7 +166,7 @@ export class Game {
   // Returns [{slot, id, cell, c, last}].
   tick() {
     const ev = [];
-    for (let s = 0; s < SLOT_COUNT; s++) {
+    for (let s = 0; s < this.slots.length; s++) {
       const slot = this.slots[s];
       if (!slot) continue;
       const cell = this.take(slot.c);
@@ -257,6 +257,47 @@ export function rollout(start, rng, care = 0.75) {
     const good = taps.filter((c) => g.reachable(g.front(c).c) > 0);
     const pool = good.length && rng() < care ? good : taps;
     g.tap(pool[Math.floor(rng() * pool.length)]);
+    g.settle();
+  }
+}
+
+// Simple-minded strategies a player might fall back on. Hard levels must
+// beat all of them, so the order of taps really matters.
+export const NAIVE = {
+  // Empty one column, then move on to the next.
+  sweep(g) {
+    const taps = g.legalTaps();
+    return taps.length ? taps[0] : -1;
+  },
+  // Tap whatever color has the most blocks within reach.
+  greedy(g) {
+    let best = -1, bv = -1;
+    for (const c of g.legalTaps()) {
+      const v = g.reachable(g.front(c).c);
+      if (v > bv) { bv = v; best = c; }
+    }
+    return best;
+  },
+  // Prefer a swarm that can fly out completely right now.
+  fits(g) {
+    let best = -1, bv = -Infinity;
+    for (const c of g.legalTaps()) {
+      const b = g.front(c);
+      const r = g.reachable(b.c);
+      const v = r >= b.n ? 1000 - b.n : r ? r - b.n : -1000;
+      if (v > bv) { bv = v; best = c; }
+    }
+    return best;
+  },
+};
+
+export function playPolicy(start, pick) {
+  const g = start.clone();
+  for (;;) {
+    if (g.won()) return true;
+    const c = pick(g);
+    if (c < 0) return false;
+    g.tap(c);
     g.settle();
   }
 }

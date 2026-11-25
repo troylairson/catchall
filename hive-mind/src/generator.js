@@ -12,15 +12,15 @@
 // 4. Rate it by letting a "casual player" bot play it many times, and keep
 //    the candidate whose win rate best fits the level's tier.
 
-import { Game, SLOT_COUNT, replay, rollout } from './engine.js';
+import { Game, replay, rollout, playPolicy, NAIVE } from './engine.js';
 import { makePicture, enrich, speckle, EASY, NESTED, ALL } from './pictures.js';
 import { COLORS } from './palette.js';
 import { mulberry32, hashInts } from './rng.js';
 
 export const TIERS = {
-  normal: { label: 'Normal', win: [0.6, 1] },
-  hard: { label: 'Hard', win: [0.25, 0.65] },
-  super: { label: 'Super Hard', win: [0, 0.3] },
+  normal: { label: 'Normal', win: [0.5, 1] },
+  hard: { label: 'Hard', win: [0.05, 0.45] },
+  super: { label: 'Super Hard', win: [0, 0.15] },
 };
 
 const NAMES = {
@@ -49,7 +49,8 @@ function params(n, tier, rng) {
     columns: n <= 2 ? 2 : n <= 6 ? 3 : 4,
     boxes: Math.round(4 + ramp * 8 + rng.int(0, 2)),
     premature: n <= 4 ? 0 : 0.1 + ramp * 0.2,
-    pressure: n <= 4 ? 0 : n <= 15 ? 1 : 2, // swarms the solution keeps waiting in slots
+    pressure: n <= 4 ? 0 : n <= 12 ? 1 : 2, // swarms the solution keeps waiting in slots
+    slots: n <= 3 ? 5 : 4,
     stack: n <= 4 ? 0 : 0.15 + ramp * 0.15,
     colors: n <= 3 ? 2 : Math.round(4 + ramp * 3),
     speckle: n <= 4 ? 0 : 0.03 + ramp * 0.06,
@@ -57,14 +58,17 @@ function params(n, tier, rng) {
     mystery: 0,
     outline: n > 8 && rng.chance(0.25) ? 1 : 0, // rings of border colors
   };
-  if (tier === 'hard') Object.assign(base, { columns: 4, boxes: base.boxes + 4, premature: 0.55, pressure: 3, stack: 0.6, outline: rng.int(0, 1), speckle: 0.18, colors: 7 + Math.round(ramp), links: rng.int(0, 2) });
-  if (tier === 'super') Object.assign(base, { columns: rng.pick([4, 5]), boxes: base.boxes + 7, premature: 0.8, pressure: 4, stack: 0.75, outline: rng.int(1, 2), speckle: 0.25, colors: 8 + Math.round(ramp), links: rng.int(1, 3), mystery: 0.35 });
+  if (tier === 'hard') Object.assign(base, { columns: 4, boxes: base.boxes + 4, premature: 0.55, pressure: 2, stack: 0.6, outline: rng.int(0, 1), speckle: 0.18, colors: 7 + Math.round(ramp), links: rng.int(0, 2) });
+  if (tier === 'super') Object.assign(base, { columns: rng.pick([4, 5]), boxes: base.boxes + 7, premature: 0.8, pressure: 3, stack: 0.75, outline: rng.int(1, 2), speckle: 0.25, colors: 8 + Math.round(ramp), links: rng.int(1, 3), mystery: 0.35 });
   return base;
 }
 
 function pickMotif(n, tier, rng) {
-  if (n <= 6) return rng.pick(EASY);
-  if (tier !== 'normal' && rng.chance(0.6)) return rng.pick(NESTED);
+  if (n <= 6 && tier === 'normal') return rng.pick(EASY);
+  if (tier !== 'normal') {
+    if (rng.chance(tier === 'super' ? 0.7 : 0.6)) return rng.pick(NESTED);
+    return rng.pick(ALL.filter((m) => !EASY.includes(m)));
+  }
   // Lean away from the heavy nested motifs on normal levels.
   const pool = ALL.filter((m) => !NESTED.includes(m) || rng.chance(0.3));
   return rng.pick(pool);
@@ -86,7 +90,7 @@ function peelDepth(pic) {
 
 // Steps 2-3: returns columns plus the winning tap order, or null.
 function buildColumns(pic, p, rng) {
-  const level = { w: pic.w, h: pic.h, cells: pic.cells, colorCount: pic.keys.length, columns: [] };
+  const level = { w: pic.w, h: pic.h, cells: pic.cells, colorCount: pic.keys.length, columns: [], slots: p.slots };
   const g = new Game(level);
   const remaining = new Array(pic.keys.length).fill(0);
   for (const c of pic.cells) if (c >= 0) remaining[c]++;
@@ -184,9 +188,10 @@ function rate(level, rng, tries) {
 export function generateLevel(n) {
   const tier = tierOf(n);
   const rng = mulberry32(hashInts(n, 0xbee));
-  const [lo, hi] = TIERS[tier].win;
+  let [lo, hi] = TIERS[tier].win;
+  if (tier === 'normal' && n > 6) hi = 0.9;
   let best = null;
-  for (let attempt = 0; attempt < (tier === 'normal' ? 4 : 20) || (!best && attempt < 80); attempt++) {
+  for (let attempt = 0; attempt < (tier === 'normal' ? (n > 6 ? 16 : 4) : 40) || (!best && attempt < 80); attempt++) {
     const p = params(n, tier, rng);
     const motif = pickMotif(n, tier, rng);
     const rings = rng.shuffle(['D', 'W', 'N', 'B', 'F', 'M']).slice(0, p.outline);
@@ -201,14 +206,21 @@ export function generateLevel(n) {
       colorCount: pic.keys.length,
       colors: pic.keys.map((k) => COLORS[k].hex),
       columns: built.cols,
+      slots: p.slots,
     };
     level.solution = addLinks(level, built.order, p.links, rng);
     if (!replay(level, level.solution)) continue; // should not happen
     if (p.mystery) for (const col of level.columns) col.forEach((b, i) => { if (i > 0 && rng.chance(p.mystery)) b.hidden = true; });
     const win = rate(level, mulberry32(hashInts(n, attempt)), 60);
+    const start = new Game(level);
+    start.settle();
+    const naive = Object.values(NAIVE).filter((pick) => playPolicy(start, pick)).length;
     level.winRate = win;
+    level.naiveWins = naive;
     level.peak = built.peak;
-    const miss = win < lo ? lo - win : win > hi ? win - hi : 0;
+    let miss = win < lo ? lo - win : win > hi ? win - hi : 0;
+    if (tier !== 'normal') miss += naive; // simple strategies must all lose
+    else if (n > 6 && naive === Object.keys(NAIVE).length) miss += 1; // at least one must lose
     if (!best || miss < best.miss) best = { level, miss };
     if (miss === 0) break;
   }

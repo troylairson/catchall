@@ -84,7 +84,7 @@ let game = null;        // engine
 let vis = null;         // what the board shows (blocks vanish when a bee grabs them)
 let boardDirty = true;
 let bees = [];
-let vSlots = new Array(SLOT_COUNT).fill(null);
+let vSlots = [];
 let popping = [];
 let flyers = [];        // swarms flying from the stack into a slot
 let colShift = [];      // per-column slide-up animation start
@@ -118,7 +118,8 @@ function computeLayout() {
   if (!L) return;
   const pad = 12;
   const K = L.columns.length;
-  const sw = Math.min((W - pad * 2) / SLOT_COUNT, 78);
+  const NS = L.slots || SLOT_COUNT;
+  const sw = Math.min((W - pad * 2) / Math.max(NS, 5), 78);
   // Flat-top hexes; shrink them on short screens so the board keeps room.
   let r = sw * 0.45;
   const lowerFor = (r) => SQ3 * r * 2.75 + 14 + 26 + 56 + 10;
@@ -140,7 +141,7 @@ function computeLayout() {
   lay.cs = Math.floor(cs * dpr) / dpr;
   lay.bx = Math.round((W - lay.cs * L.w) / 2 * dpr) / dpr;
   lay.by = Math.round((lay.panel.y + (lay.panel.h - lay.cs * L.h) / 2) * dpr) / dpr;
-  lay.slots = Array.from({ length: SLOT_COUNT }, (_, i) => ({ x: W / 2 + (i - (SLOT_COUNT - 1) / 2) * lay.sw, y: lay.slotY }));
+  lay.slots = Array.from({ length: NS }, (_, i) => ({ x: W / 2 + (i - (NS - 1) / 2) * lay.sw, y: lay.slotY }));
   const cw = Math.min((W - pad * 2) / K, lay.sw * 1.25);
   lay.cols = Array.from({ length: K }, (_, k) => ({
     x: W / 2 + (k - (K - 1) / 2) * cw,
@@ -360,7 +361,7 @@ function drawSlots(c, now) {
     c.fillStyle = 'rgba(255,246,225,0.55)';
     c.fill();
   }
-  for (let i = 0; i < SLOT_COUNT; i++) {
+  for (let i = 0; i < vSlots.length; i++) {
     const v = vSlots[i];
     if (!v || v.arriveAt > now) continue;
     const t = Math.min(1, (now - v.arriveAt) / 160);
@@ -663,7 +664,7 @@ async function startLevel(n) {
   game = new Game(L);
   vis = Int8Array.from(L.cells);
   bees = []; flyers = []; popping = []; particles = [];
-  vSlots = new Array(SLOT_COUNT).fill(null);
+  vSlots = new Array(L.slots || SLOT_COUNT).fill(null);
   colShift = []; colShake = [];
   tickAcc = 0; endAt = 0; tapsMade = 0;
   resize();
@@ -684,6 +685,7 @@ async function startLevel(n) {
   if (n === 1) showHint('Tap a swarm to send its bees out', 'tap');
   else if (n === 2) showHint('Bees can only reach blocks on the outside edge', null, 5000);
   else if (n === 3) showHint('Only 5 swarms fit in the hive, so choose carefully!', null, 5000);
+  else if (n === 4) showHint('From here on the hive has just 4 spots. Plan your order!', null, 5000);
   state = 'play';
   maybeLinkHint();
   prefetch(n + 1);
@@ -709,7 +711,7 @@ function winLevel() {
 function loseLevel() {
   sfx('lose');
   haptic('lose');
-  openModal('Hive jammed!', [para('Every spot in the hive is waiting on blocks the bees can’t reach yet.')], [
+  openModal('Hive jammed!', [para('Every spot in the hive is waiting on blocks the bees can’t reach yet. Try a different order.')], [
     { label: 'Try again', fn: () => startLevel(L.n) },
     { label: 'Home', secondary: true, fn: goHome },
   ]);
@@ -838,8 +840,8 @@ $('howBtn').addEventListener('click', () => {
     'Tap a numbered swarm to move it into the hive.',
     'Its bees fly out one by one, each grabbing a block of their color.',
     'Bees can only reach blocks on the outside edge of the picture.',
-    'The hive holds 5 swarms. A swarm leaves once all its bees are out.',
-    'If all 5 spots are waiting on blocks nobody can reach, the hive jams.',
+    'The hive holds 4 swarms (5 on the first levels). A swarm leaves once all its bees are out.',
+    'If every spot is waiting on blocks nobody can reach, the hive jams.',
     'Clear every block to finish the level.',
   ]) { const li = document.createElement('li'); li.textContent = t; ol.append(li); }
   openModal('How to play', [ol], [{ label: 'Got it', fn: closeModal }]);
@@ -863,6 +865,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 window.__hive = {
   get state() { return state; },
   get level() { return L; },
+  get idle() { return !!game && !game.canProgress() && bees.length === 0 && flyers.length === 0; },
   tap: (k) => tapColumn(k),
   start: (n) => { homeEl.hidden = true; return startLevel(n); },
 };
