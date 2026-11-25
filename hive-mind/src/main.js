@@ -422,7 +422,11 @@ function drawStack(c, now) {
       if (!b || !b.pair) continue;
       const a = at(k, i), o = at(b.pair[0], b.pair[1]);
       if (o) { if (b.pair[0] > k) drawLinkBar(c, a.x, a.y, o.x, o.y, r); }
-      else drawLinkBar(c, a.x, a.y, a.x + Math.sign(b.pair[0] - k) * lay.cols[k].w * 0.55, a.y, r);
+      else {
+        // Partner is buried deeper: a short stub that stops halfway into the gap.
+        const reach = r + Math.max(4, (lay.cols[k].w - 2 * r) * 0.3);
+        drawLinkBar(c, a.x, a.y, a.x + Math.sign(b.pair[0] - k) * reach, a.y, r);
+      }
     }
   });
   L.columns.forEach((boxes, k) => {
