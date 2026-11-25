@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main, claude/adoring-euler-49gc23]
-    paths: ['guitar-coach/**', 'family-board/site/**', 'fraction-pocket/**', '.github/workflows/pages.yml']
+    paths: ['guitar-coach/**', 'family-board/site/**', 'fraction-pocket/**', 'hive-mind/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -34,6 +34,9 @@ jobs:
       - name: Test Fraction Pocket
         working-directory: fraction-pocket
         run: npm test
+      - name: Test Hive Mind
+        working-directory: hive-mind
+        run: npm test
       - name: Assemble site (app lives under /guitar/)
         run: |
           mkdir -p _site/guitar
@@ -44,6 +47,9 @@ jobs:
           # Fraction Pocket is static files, no build step.
           mkdir -p _site/fractions
           cp -r fraction-pocket/index.html fraction-pocket/style.css fraction-pocket/manifest.webmanifest fraction-pocket/src fraction-pocket/icons _site/fractions/
+          # Hive Mind is static files too.
+          mkdir -p _site/hive
+          cp -r hive-mind/index.html hive-mind/style.css hive-mind/manifest.webmanifest hive-mind/sw.js hive-mind/src hive-mind/icons _site/hive/
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8">

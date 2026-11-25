@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Hive Mind</title>
+  <meta name="description" content="A relaxing bee puzzle. Send swarms out to collect colored blocks and clear the picture. No ads.">
+  <meta name="theme-color" content="#f6e3b4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#251b12" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="Hive Mind">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="bar">
+      <button id="menuBtn" class="round-btn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg>
+      </button>
+      <div class="level-title">
+        <span id="levelLabel">Level 1</span>
+        <span id="tierBadge" class="tier" hidden></span>
+      </div>
+      <button id="speedBtn" class="pill-btn" aria-label="Bee speed">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 5l8 7-8 7zM12 5l8 7-8 7z"/></svg>
+        <span id="speedLabel">1×</span>
+      </button>
+    </header>
+    <div class="stage">
+      <canvas id="game" aria-label="Game board"></canvas>
+      <div id="hint" class="hint" hidden></div>
+      <div id="banner" class="banner" hidden></div>
+    </div>
+  </div>
+
+  <section id="home" class="screen">
+    <div class="home-inner">
+      <svg class="logo" viewBox="0 0 120 120" aria-hidden="true">
+        <g fill="#f2b632" stroke="#a8670f" stroke-width="3" stroke-linejoin="round">
+          <path d="M60 14l22 12.7v25.4L60 64.8 38 52.1V26.7z"/>
+          <path d="M37 54l22 12.7v25.4L37 104.8 15 92.1V66.7z" fill="#f7c843"/>
+          <path d="M83 54l22 12.7v25.4L83 104.8 61 92.1V66.7z" fill="#e9a21f"/>
+        </g>
+        <g transform="translate(60 40)">
+          <ellipse cx="-6" cy="-9" rx="7" ry="5" fill="#fff" opacity=".9"/>
+          <ellipse cx="6" cy="-9" rx="7" ry="5" fill="#fff" opacity=".9"/>
+          <ellipse cx="0" cy="2" rx="12" ry="9" fill="#ffd54a" stroke="#2b2420" stroke-width="2"/>
+          <path d="M-4 -6.5v17M4 -6v16" stroke="#2b2420" stroke-width="4"/>
+          <circle cx="-9" cy="0" r="1.8" fill="#2b2420"/>
+        </g>
+      </svg>
+      <h1>Hive Mind</h1>
+      <p class="tag">Send the swarm. Clear the picture.</p>
+      <button id="playBtn" class="big-btn">
+        <span class="play-main">Play</span>
+        <span class="play-sub" id="playSub">Level 1</span>
+      </button>
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" id="soundToggle" checked><span>Sound</span></label>
+        <label class="toggle"><input type="checkbox" id="hapticsToggle" checked><span>Haptics</span></label>
+      </div>
+      <button id="howBtn" class="link-btn">How to play</button>
+    </div>
+  </section>
+
+  <div id="modal" class="modal" hidden>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h2 id="modalTitle"></h2>
+      <div id="modalBody"></div>
+      <div id="modalActions" class="actions"></div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
