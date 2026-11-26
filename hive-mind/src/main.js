@@ -199,17 +199,19 @@ function tile(colorIdx, size) {
 }
 
 function beeSprite(colorIdx, frame) {
-  const key = colorIdx + ':' + frame;
+  return makeBee(L.colors[colorIdx], frame, lay.beeSize);
+}
+
+function makeBee(body, frame, size) {
+  const key = body + ':' + frame + ':' + size;
   let s = beeCache.get(key);
   if (s) return s;
-  const size = lay.beeSize;
   const px = Math.ceil(size * 2 * dpr);
   s = document.createElement('canvas');
   s.width = s.height = px;
   const c = s.getContext('2d');
   c.scale(dpr, dpr);
   c.translate(size, size);
-  const body = L.colors[colorIdx];
   // wings
   c.fillStyle = 'rgba(255,255,255,0.88)';
   c.strokeStyle = 'rgba(60,40,20,0.35)';
@@ -482,6 +484,7 @@ function spawnBee(ev, from) {
     dur: Math.max(380, dist / 0.55),
     seed: Math.random() * 10,
   });
+  setZigzag(bees[bees.length - 1]);
 }
 
 function bezier(b, t) {
@@ -492,8 +495,33 @@ function bezier(b, t) {
   return {
     x: u * u * b.x0 + 2 * u * t * cx + t * t * b.x1,
     y: u * u * b.y0 + 2 * u * t * cy + t * t * b.y1,
-    a: Math.atan2(2 * u * (cy - b.y0) + 2 * t * (b.y1 - cy), 2 * u * (cx - b.x0) + 2 * t * (b.x1 - cx)),
   };
+}
+
+// Bees zig-zag: a triangle wave across the curved route, fading out at both
+// ends so they still take off and land exactly on target.
+function zigzag(b, t) {
+  const p = bezier(b, t);
+  const q = bezier(b, Math.min(1, t + 0.01));
+  const r = bezier(b, Math.max(0, t - 0.01));
+  const tx = q.x - r.x, ty = q.y - r.y;
+  const len = Math.hypot(tx, ty) || 1;
+  const tri = (2 / Math.PI) * Math.asin(Math.sin(t * b.waves * Math.PI * 2 + b.seed));
+  const w = tri * b.amp * Math.sin(Math.PI * t);
+  return { x: p.x - (ty / len) * w, y: p.y + (tx / len) * w };
+}
+
+function flightPos(b, t) {
+  const p = zigzag(b, t);
+  const n = zigzag(b, Math.min(1, t + 0.012));
+  const a = n.x === p.x && n.y === p.y ? Math.atan2(b.y1 - b.y0, b.x1 - b.x0) : Math.atan2(n.y - p.y, n.x - p.x);
+  return { x: p.x, y: p.y, a };
+}
+
+function setZigzag(b) {
+  const dist = Math.hypot(b.x1 - b.x0, b.y1 - b.y0);
+  b.waves = Math.max(1.5, Math.min(6, dist / 70));
+  b.amp = Math.min(12, 4 + dist * 0.03);
 }
 
 function updateBees(dt) {
@@ -508,6 +536,7 @@ function updateBees(dt) {
         b.x1 = lay.hive.x + (Math.random() - 0.5) * 6; b.y1 = lay.hive.y + 12;
         b.dur = Math.max(380, Math.hypot(b.x1 - b.x0, b.y1 - b.y0) / 0.5);
         b.k = -b.k * 0.8;
+        setZigzag(b);
       } else {
         b.done = true;
         hivePulse = performance.now() + 90;
@@ -522,7 +551,7 @@ function drawBees(c, now) {
   const size = lay.beeSize;
   const carry = lay.cs * 0.7;
   for (const b of bees) {
-    const p = bezier(b, ease(b.t) * 0.3 + b.t * 0.7);
+    const p = flightPos(b, ease(b.t) * 0.3 + b.t * 0.7);
     const frame = ((now / 45 + b.seed) | 0) % 2;
     c.save();
     c.translate(p.x, p.y);
@@ -531,6 +560,125 @@ function drawBees(c, now) {
     c.drawImage(beeSprite(b.c, frame), -size, -size, size * 2, size * 2);
     c.restore();
   }
+}
+
+// ---------- end-of-level card built by a swarm ----------
+// Bees pour out of the hive, fill the card's shape, the card appears, and the
+// bees settle around its border until the card closes. Drawn on its own
+// canvas above the modal overlay.
+const fx = $('fx');
+const fctx = fx.getContext('2d');
+const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const SWARM_BEE = '#f5c03a';
+let swarm = null;
+
+function sizeFx() {
+  fx.width = Math.round(innerWidth * dpr);
+  fx.height = Math.round(innerHeight * dpr);
+}
+
+function startSwarm(card) {
+  const now = performance.now();
+  sizeFx();
+  const rect = card.getBoundingClientRect();
+  const cr = canvas.getBoundingClientRect();
+  const hive = { x: cr.left + lay.hive.x, y: cr.top + lay.hive.y + 10 };
+  // Spots spread over the card, about 26px apart, at most ~110 bees.
+  let step = 26;
+  while ((rect.width / step) * (rect.height / step) > 110) step += 2;
+  const spots = [];
+  for (let y = rect.top + step / 2; y < rect.bottom; y += step) {
+    for (let x = rect.left + step / 2; x < rect.right; x += step) {
+      spots.push({ x: x + (Math.random() - 0.5) * step * 0.5, y: y + (Math.random() - 0.5) * step * 0.5 });
+    }
+  }
+  // Border spots, slightly outside the card, where bees wait afterwards.
+  const ring = [];
+  const per = 2 * (rect.width + rect.height);
+  const count = Math.min(spots.length, Math.round(per / 30));
+  const pad = 6;
+  for (let i = 0; i < count; i++) {
+    let d = (i / count) * per;
+    let x, y, a;
+    if (d < rect.width) { x = rect.left + d; y = rect.top - pad; a = 0; }
+    else if ((d -= rect.width) < rect.height) { x = rect.right + pad; y = rect.top + d; a = Math.PI / 2; }
+    else if ((d -= rect.height) < rect.width) { x = rect.right - d; y = rect.bottom + pad; a = Math.PI; }
+    else { d -= rect.width; x = rect.left - pad; y = rect.bottom - d; a = -Math.PI / 2; }
+    ring.push({ x, y, a });
+  }
+  const sb = spots.map((sp, i) => {
+    const b = {
+      x0: hive.x + (Math.random() - 0.5) * 10, y0: hive.y, x1: sp.x, y1: sp.y,
+      k: (Math.random() - 0.5) * 0.5, seed: Math.random() * 10,
+      t: 0, start: now + Math.random() * 550, dur: 650 + Math.random() * 300,
+      ring: i < ring.length ? ring[i] : null, phase: 0,
+    };
+    setZigzag(b);
+    return b;
+  });
+  swarm = { bees: sb, card, revealed: false, start: now };
+}
+
+function stopSwarm() {
+  swarm = null;
+  fctx.setTransform(1, 0, 0, 1, 0, 0);
+  fctx.clearRect(0, 0, fx.width, fx.height);
+}
+
+function drawSwarm(now) {
+  const c = fctx;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, fx.width, fx.height);
+  if (!swarm) return 0;
+  const size = 11;
+  let flying = 0, arrived = 0;
+  for (const b of swarm.bees) {
+    if (now < b.start) continue;
+    let t = Math.min(1, (now - b.start) / b.dur);
+    if (t >= 1 && b.phase === 0) arrived++;
+    if (t >= 1 && b.phase === 1) {
+      if (!b.ring) { b.gone = true; continue; }
+      b.phase = 2; // hover on the border
+    }
+    let x, y, a;
+    if (b.phase === 2) {
+      const w = (now / 1000) * 2 + b.seed;
+      x = b.ring.x + Math.sin(w * 1.7) * 3;
+      y = b.ring.y + Math.cos(w * 2.3) * 3;
+      a = b.ring.a + Math.sin(w) * 0.5;
+    } else {
+      if (t < 1) flying++;
+      const p = flightPos(b, ease(t) * 0.4 + t * 0.6);
+      x = p.x; y = p.y; a = p.a;
+    }
+    const frame = ((now / 40 + b.seed) | 0) % 2;
+    c.save();
+    c.translate(x, y);
+    c.rotate(a);
+    c.drawImage(makeBee(SWARM_BEE, frame, size), -size, -size, size * 2, size * 2);
+    c.restore();
+  }
+  // Once most bees have filled the card, show it and send them to the border.
+  if (!swarm.revealed && (arrived >= swarm.bees.length * 0.9 || now - swarm.start > 2200)) {
+    swarm.revealed = true;
+    swarm.card.classList.remove('forming');
+    swarm.card.classList.add('formed');
+    for (const b of swarm.bees) {
+      const p = flightPos(b, Math.min(1, Math.max(0, (now - b.start) / b.dur)));
+      b.x0 = p.x; b.y0 = p.y;
+      if (b.ring) { b.x1 = b.ring.x; b.y1 = b.ring.y; }
+      else {
+        // Spare bees fly back toward the hive and off.
+        const cr = canvas.getBoundingClientRect();
+        b.x1 = cr.left + lay.hive.x; b.y1 = cr.top + lay.hive.y + 10;
+      }
+      b.phase = 1; b.start = now + Math.random() * 150; b.dur = 450 + Math.random() * 250;
+      b.k = (Math.random() - 0.5) * 0.4;
+      setZigzag(b);
+    }
+  }
+  swarm.bees = swarm.bees.filter((b) => !b.gone);
+  return flying;
 }
 
 // ---------- particles ----------
@@ -585,7 +733,8 @@ function frame(now) {
     updateBees(dt);
     checkEnd(now);
   }
-  setBuzz(bees.length);
+  const swarmFlying = drawSwarm(now);
+  setBuzz(bees.length + swarmFlying);
 
   const c = ctx;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -773,8 +922,8 @@ function winLevel() {
     openModal(`Level ${n} done!`, [mini, para(`You uncovered: ${L.name}`)], [
       { label: 'Next level', fn: () => startLevel(n + 1) },
       { label: 'Home', secondary: true, fn: goHome },
-    ]);
-  }, 900);
+    ], { swarm: true });
+  }, 700);
 }
 
 function loseLevel() {
@@ -783,7 +932,7 @@ function loseLevel() {
   openModal('Hive jammed!', [para('Every spot in the hive is waiting on blocks the bees can’t reach yet. Try a different order.')], [
     { label: 'Try again', fn: () => startLevel(L.n) },
     { label: 'Home', secondary: true, fn: goHome },
-  ]);
+  ], { swarm: true });
 }
 
 function para(text) { const p = document.createElement('p'); p.textContent = text; return p; }
@@ -808,7 +957,8 @@ function miniPicture(level, max) {
 }
 
 // ---------- modal & menus ----------
-function openModal(title, nodes, actions) {
+function openModal(title, nodes, actions, { swarm: withSwarm = false } = {}) {
+  stopSwarm();
   $('modalTitle').textContent = title;
   const body = $('modalBody');
   body.replaceChildren(...nodes);
@@ -820,9 +970,18 @@ function openModal(title, nodes, actions) {
     b.addEventListener('click', () => { unlockAudio(); sfx('click'); a.fn(); });
     return b;
   }));
+  const card = modalEl.querySelector('.card');
+  card.classList.remove('forming', 'formed');
   modalEl.hidden = false;
+  if (withSwarm && !reduceMotion && lay.hive) {
+    card.classList.add('forming');
+    startSwarm(card);
+  }
 }
-function closeModal() { modalEl.hidden = true; }
+function closeModal() {
+  modalEl.hidden = true;
+  stopSwarm();
+}
 
 function toggleRow() {
   const wrap = document.createElement('div');
@@ -954,7 +1113,7 @@ $('howBtn').addEventListener('click', () => {
 
 // ---------- boot ----------
 initHaptics();
-window.addEventListener('resize', () => { if (L) resize(); });
+window.addEventListener('resize', () => { if (L) resize(); if (swarm) sizeFx(); });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { setBuzz(0); if (state === 'play') $('menuBtn').click(); }
 });

@@ -239,3 +239,12 @@ h1 { margin: 0; font-size: 46px; font-weight: 700; letter-spacing: .5px; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; box-shadow: 0 3px 0 var(--btn-shadow); }
 .card .speed-picker { margin: 10px 0 2px; }
 .card .seg { background: rgba(201, 144, 46, 0.18); }
+
+/* Swarm layer above the modal, and the card it builds */
+#fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 11; pointer-events: none; }
+.card.forming { opacity: 0; animation: none; }
+.card.formed { animation: assemble .45s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes assemble {
+  from { opacity: 0; transform: scale(.9); }
+  to { opacity: 1; transform: scale(1); }
+}
