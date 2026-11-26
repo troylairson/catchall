@@ -19,8 +19,8 @@ import { mulberry32, hashInts } from './rng.js';
 
 export const TIERS = {
   normal: { label: 'Normal', win: [0.5, 1] },
-  hard: { label: 'Hard', win: [0.05, 0.45] },
-  super: { label: 'Super Hard', win: [0, 0.15] },
+  hard: { label: 'Hard', win: [0.05, 0.25] },
+  super: { label: 'Super Hard', win: [0, 0.1] },
 };
 
 const NAMES = {
@@ -47,26 +47,25 @@ function params(n, tier, rng) {
   if (tier === 'super') size += 3;
   const base = {
     size,
-    columns: n <= 2 ? 3 : 4,
-    boxes: Math.round(6 + ramp * 7 + rng.int(0, 2)),
+    columns: 4,
+    boxes: Math.round(7 + ramp * 6 + rng.int(0, 2)),
     premature: 0.3 + ramp * 0.15,
-    pressure: 2, // swarms the solution keeps waiting in slots
-    slots: 4,
+    pressure: 3, // swarms the solution keeps waiting in slots
+    slots: 5,
     stack: 0.3 + ramp * 0.15,
     colors: Math.round(5 + ramp * 2),
     speckle: 0.03 + ramp * 0.06,
     links: 0,
-    joins: n >= 2 && rng.chance(0.5) ? 1 : 0, // side-by-side joined pairs
+    joins: n <= 4 || rng.chance(0.5) ? 1 : 0, // side-by-side joined pairs
     mystery: 0,
     outline: m > 8 && rng.chance(0.25) ? 1 : 0, // rings of border colors
   };
-  if (tier === 'hard') Object.assign(base, { columns: 4, boxes: base.boxes + 4, premature: 0.55, pressure: 2, stack: 0.6, outline: rng.int(0, 1), speckle: 0.18, colors: 7 + Math.round(ramp), links: rng.int(0, 2), joins: rng.int(1, 2) });
-  if (tier === 'super') Object.assign(base, { columns: rng.pick([4, 5]), boxes: base.boxes + 7, premature: 0.8, pressure: 3, stack: 0.75, outline: rng.int(1, 2), speckle: 0.25, colors: 8 + Math.round(ramp), links: rng.int(1, 3), joins: rng.int(2, 3), mystery: 0.35 });
+  if (tier === 'hard') Object.assign(base, { columns: 4, boxes: base.boxes + 4, premature: 0.6, pressure: 3, stack: 0.6, outline: rng.int(0, 1), speckle: 0.18, colors: 7 + Math.round(ramp), links: rng.int(0, 2), joins: rng.int(2, 3) });
+  if (tier === 'super') Object.assign(base, { columns: rng.pick([4, 5]), boxes: base.boxes + 7, premature: 0.85, pressure: 4, stack: 0.75, outline: rng.int(1, 2), speckle: 0.25, colors: 8 + Math.round(ramp), links: rng.int(1, 3), joins: rng.int(3, 4), mystery: 0.35 });
   return base;
 }
 
 function pickMotif(n, tier, rng) {
-  if (n <= 3 && tier === 'normal') return rng.pick(EASY);
   if (tier !== 'normal') {
     if (rng.chance(tier === 'super' ? 0.7 : 0.6)) return rng.pick(NESTED);
     return rng.pick(ALL.filter((m) => !EASY.includes(m)));
@@ -125,7 +124,7 @@ function buildColumns(pic, p, rng) {
     if (n > 99) n = 99;
     remaining[c] -= n;
     const slot = g.slots.indexOf(null);
-    g.slots[slot] = { c, n, id: g.nextId++ };
+    g.slots[slot] = { c, n, id: g.nextId++, mate: -1 };
     seq.push({ c, n });
   }
   g.settle();
@@ -218,7 +217,7 @@ export function generateLevel(n) {
   let [lo, hi] = TIERS[tier].win;
   if (tier === 'normal') hi = 0.9;
   let best = null;
-  for (let attempt = 0; attempt < (tier === 'normal' ? 30 : 40) || (!best && attempt < 80); attempt++) {
+  for (let attempt = 0; attempt < (tier === 'normal' ? 30 : 60) || ((!best || best.miss >= 1) && attempt < 90); attempt++) {
     const p = params(n, tier, rng);
     const motif = pickMotif(n, tier, rng);
     const rings = rng.shuffle(['D', 'W', 'N', 'B', 'F', 'M']).slice(0, p.outline);
