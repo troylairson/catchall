@@ -569,7 +569,8 @@ function drawBees(c, now) {
 const fx = $('fx');
 const fctx = fx.getContext('2d');
 const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-const SWARM_BEE = '#f5c03a';
+// Swarm bees come in a bright mix of colors.
+const SWARM_COLORS = ['#e5484d', '#f28a2e', '#f7c843', '#a6d65a', '#3e9e4f', '#2bb5a5', '#62b6f0', '#3d5fd6', '#8f5bd8', '#f38bb8'];
 let swarm = null;
 
 function sizeFx() {
@@ -612,6 +613,7 @@ function startSwarm(card) {
       k: (Math.random() - 0.5) * 0.5, seed: Math.random() * 10,
       t: 0, start: now + Math.random() * 550, dur: 650 + Math.random() * 300,
       ring: i < ring.length ? ring[i] : null, phase: 0,
+      col: SWARM_COLORS[i % SWARM_COLORS.length],
     };
     setZigzag(b);
     return b;
@@ -655,7 +657,7 @@ function drawSwarm(now) {
     c.save();
     c.translate(x, y);
     c.rotate(a);
-    c.drawImage(makeBee(SWARM_BEE, frame, size), -size, -size, size * 2, size * 2);
+    c.drawImage(makeBee(b.col, frame, size), -size, -size, size * 2, size * 2);
     c.restore();
   }
   // Once most bees have filled the card, show it and send them to the border.
