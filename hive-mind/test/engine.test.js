@@ -73,3 +73,22 @@ test('joined swarms are locked until both are at the front, then leave together'
   g.settle();
   assert.ok(g.won());
 });
+
+test('a joined swarm keeps its spot until its mate is empty too', () => {
+  const lvl = ring();
+  // Joined pair: 8 blocks of color 0 and the 1 sealed center block of color 1.
+  lvl.columns = [[{ c: 1, n: 1, pair: [1, 0] }], [{ c: 0, n: 8, pair: [0, 0] }]];
+  const g = new Game(lvl);
+  const placed = g.tap(0);
+  assert.equal(placed[1].slot, placed[0].slot + 1, 'pair sits side by side');
+  // Run until the outer ring is gone; the ring swarm hits 0 before the center is taken.
+  let sawWaiting = false;
+  for (let i = 0; i < 20 && !g.won(); i++) {
+    g.tick();
+    const [a, b] = [g.slots[placed[0].slot], g.slots[placed[1].slot]];
+    if (a && b && (a.n === 0) !== (b.n === 0)) { sawWaiting = true; assert.equal(g.freeSlots(), 3); }
+  }
+  assert.ok(g.won());
+  assert.equal(g.freeSlots(), 5);
+  assert.ok(sawWaiting, "the empty ring swarm waited for its mate");
+});

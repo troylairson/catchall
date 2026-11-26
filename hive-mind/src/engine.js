@@ -163,29 +163,48 @@ export class Game {
     if (b.link) take.push([col, 1]);
     if (b.pair) take.push([b.pair[0], 0]);
     const placed = [];
+    // Pairs go into side-by-side spots when there are two next to each other.
+    let spots = this.slots.map((v, i) => i).filter((i) => !this.slots[i]);
+    if (take.length === 2) {
+      const i = spots.findIndex((x, j) => spots[j + 1] === x + 1);
+      if (i >= 0) spots = [spots[i], spots[i + 1]];
+    }
     for (const [c, row] of take) {
       const box = this.cols[c][this.ptr[c]++];
-      const slot = this.slots.indexOf(null);
+      const slot = spots.shift();
       const id = this.nextId++;
-      this.slots[slot] = { c: box.c, n: box.n, id };
-      placed.push({ slot, box, id, col: c, row });
+      this.slots[slot] = { c: box.c, n: box.n, id, mate: -1 };
+      placed.push({ slot, box, id, col: c, row, mate: -1 });
+    }
+    // A joined pair keeps both spots until both swarms are empty.
+    if (b.pair) {
+      const [a, z] = placed;
+      this.slots[a.slot].mate = z.slot; a.mate = z.slot;
+      this.slots[z.slot].mate = a.slot; z.mate = a.slot;
     }
     return placed;
   }
 
   // One round: every slot sends one bee if it can.
-  // Returns [{slot, id, cell, c, last}].
+  // Returns [{slot, id, cell, c, last, freed}]: `last` when that swarm's final
+  // bee leaves, `freed` the slots that open up (a joined swarm waits for its mate).
   tick() {
     const ev = [];
     for (let s = 0; s < this.slots.length; s++) {
       const slot = this.slots[s];
-      if (!slot) continue;
+      if (!slot || slot.n === 0) continue;
       const cell = this.take(slot.c);
       if (cell < 0) continue;
       slot.n--;
       const last = slot.n === 0;
-      ev.push({ slot: s, id: slot.id, cell, c: slot.c, last });
-      if (last) this.slots[s] = null;
+      const freed = [];
+      if (last) {
+        const m = slot.mate;
+        if (m < 0) freed.push(s);
+        else if (this.slots[m].n === 0) freed.push(s, m);
+        for (const f of freed) this.slots[f] = null;
+      }
+      ev.push({ slot: s, id: slot.id, cell, c: slot.c, last, freed });
     }
     return ev;
   }
@@ -201,7 +220,7 @@ export class Game {
   }
 
   canProgress() {
-    for (const s of this.slots) if (s && this.frontier[s.c].length) return true;
+    for (const s of this.slots) if (s && s.n > 0 && this.frontier[s.c].length) return true;
     return false;
   }
 

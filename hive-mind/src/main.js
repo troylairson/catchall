@@ -377,11 +377,18 @@ function drawSlots(c, now) {
     c.fillStyle = 'rgba(255,246,225,0.55)';
     c.fill();
   }
+  // Bars between joined swarms sitting in the hive.
+  for (let i = 0; i < vSlots.length; i++) {
+    const v = vSlots[i];
+    if (!v || v.mate < i || v.arriveAt > now) continue;
+    const m = vSlots[v.mate];
+    if (m && m.arriveAt <= now) drawLinkBar(c, lay.slots[i].x, lay.slots[i].y, lay.slots[v.mate].x, lay.slots[v.mate].y, r);
+  }
   for (let i = 0; i < vSlots.length; i++) {
     const v = vSlots[i];
     if (!v || v.arriveAt > now) continue;
     const t = Math.min(1, (now - v.arriveAt) / 160);
-    drawBox(c, lay.slots[i].x, lay.slots[i].y, r, v.c, v.n, { scale: 1 + 0.12 * Math.sin(t * Math.PI) });
+    drawBox(c, lay.slots[i].x, lay.slots[i].y, r, v.c, v.n, { scale: 1 + 0.12 * Math.sin(t * Math.PI), dim: v.n === 0 });
   }
   popping = popping.filter((p) => now - p.at < 220);
   for (const p of popping) {
@@ -585,15 +592,15 @@ function launch(now) {
   const events = game.tick();
   for (const ev of events) {
     const v = vSlots[ev.slot];
-    const from = lay.slots[ev.slot];
-    spawnBee(ev, from);
-    if (v && v.id === ev.id) {
-      v.n--;
-      if (ev.last) {
-        popping.push({ slot: ev.slot, c: v.c, at: now });
-        vSlots[ev.slot] = null;
-        sfx('done');
-      }
+    spawnBee(ev, lay.slots[ev.slot]);
+    if (v && v.id === ev.id) v.n--;
+    if (ev.last) sfx('done');
+    // A joined swarm that runs out waits (showing 0) until its mate is empty.
+    for (const s of ev.freed) {
+      const f = vSlots[s];
+      if (!f) continue;
+      popping.push({ slot: s, c: f.c, at: now });
+      vSlots[s] = null;
     }
   }
 }
@@ -658,7 +665,7 @@ function tapColumn(k) {
     const col = lay.cols[p.col];
     const y0 = p.row === 0 ? col.y : col.y2;
     flyers.push({ c: p.box.c, n: p.box.n, x0: col.x, y0, x1: lay.slots[p.slot].x, y1: lay.slots[p.slot].y, start: now, dur });
-    vSlots[p.slot] = { id: p.id, c: p.box.c, n: p.box.n, arriveAt: now + dur };
+    vSlots[p.slot] = { id: p.id, c: p.box.c, n: p.box.n, mate: p.mate, arriveAt: now + dur };
     colShift[p.col] = now;
   }
   tapsMade++;
@@ -674,7 +681,7 @@ function maybeLinkHint() {
   if (!prefs.seenJoin && fronts.some((b) => b && b.pair)) {
     prefs.seenJoin = true;
     save();
-    showHint('Joined swarms leave together, once both are at the front', null, 5000);
+    showHint('Joined swarms leave together once both are at the front, and hold both spots until both are empty', null, 6000);
   } else if (!prefs.seenLink && fronts.some((b) => b && b.link)) {
     prefs.seenLink = true;
     save();
@@ -734,7 +741,7 @@ async function startLevel(n) {
   hideHint();
   if (n === 1) showHint('Tap a swarm to send its bees out', 'tap');
   else if (n === 2) showHint('Bees can only reach blocks on the outside edge', null, 5000);
-  else if (n === 3) showHint('Only 4 swarms fit in the hive. Plan your order!', null, 5000);
+  else if (n === 3) showHint('Only 5 swarms fit in the hive. Plan your order!', null, 5000);
   state = 'play';
   maybeLinkHint();
   prefetch(n + 1);
@@ -891,9 +898,9 @@ $('howBtn').addEventListener('click', () => {
     'Tap a numbered swarm to move it into the hive.',
     'Its bees fly out one by one, each grabbing a block of their color.',
     'Bees can only reach blocks on the outside edge of the picture.',
-    'The hive holds 4 swarms. A swarm leaves once all its bees are out.',
+    'The hive holds 5 swarms. A swarm leaves once all its bees are out.',
     'If every spot is waiting on blocks nobody can reach, the hive jams.',
-    'Linked or joined swarms leave together. Joined ones wait until both are at the front.',
+    'Linked or joined swarms leave together. Joined ones wait until both are at the front, and keep both spots until both are empty.',
     'Clear every block to finish the level.',
   ]) { const li = document.createElement('li'); li.textContent = t; ol.append(li); }
   openModal('How to play', [ol], [{ label: 'Got it', fn: closeModal }]);
@@ -917,6 +924,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 window.__hive = {
   get state() { return state; },
   get level() { return L; },
+  get slots() { return game ? game.slots.map((v) => v && { ...v }) : []; },
   get idle() { return !!game && !game.canProgress() && bees.length === 0 && flyers.length === 0; },
   tap: (k) => tapColumn(k),
   start: (n) => { homeEl.hidden = true; return startLevel(n); },

@@ -45,10 +45,10 @@ test('hard levels beat simple strategies (sweep a column, greedy)', () => {
   assert.ok(beaten / total >= 0.85, `only ${beaten}/${total} hard levels beat every simple strategy`);
 });
 
-test('every level has a 4-spot hive, and early levels resist column-by-column play', () => {
+test('every level has a 5-spot hive, and early levels resist column-by-column play', () => {
   for (let n = 1; n <= 4; n++) {
     const L = generateLevel(n);
-    assert.equal(L.slots, 4);
+    assert.equal(L.slots, 5);
     const g = new Game(L);
     g.settle();
     assert.ok(Object.values(NAIVE).some((pick) => !playPolicy(g, pick)), `level ${n}: some simple strategy must lose`);
