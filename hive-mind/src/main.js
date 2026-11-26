@@ -188,6 +188,12 @@ function tile(colorIdx, size) {
   c.fillStyle = shade(base, 0.35);
   roundRect(c, g + px * 0.14, g + px * 0.1, px * 0.38, px * 0.14, px * 0.07);
   c.fill();
+  // Faint dark outline so pale blocks (cream, white, gray) stand out on the board.
+  const lw = Math.max(dpr, px * 0.045);
+  c.strokeStyle = 'rgba(70, 45, 15, 0.3)';
+  c.lineWidth = lw;
+  roundRect(c, g + lw / 2, g + lw / 2, px - 2 * g - lw, px - 2 * g - lw, rr - lw / 2);
+  c.stroke();
   tileCache.set(key, t);
   return t;
 }
