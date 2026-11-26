@@ -6,7 +6,12 @@ import { initHaptics, haptic, setHapticsEnabled } from './haptics.js';
 // ---------- settings & progress ----------
 const STORE = 'hivemind.v1';
 const saved = (() => { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { return {}; } })();
-const prefs = { level: 1, sound: true, haptics: true, fast: false, ...saved };
+const prefs = { level: 1, sound: true, haptics: true, speed: 'normal', ...saved };
+// Bee speed, as a multiple of the original pace (which players found too quick).
+const SPEEDS = { slow: { label: 'Slow', x: 0.45 }, normal: { label: 'Normal', x: 0.65 }, fast: { label: 'Fast', x: 1 } };
+if (saved.fast) prefs.speed = 'fast'; // the old 2× toggle
+delete prefs.fast;
+if (!SPEEDS[prefs.speed]) prefs.speed = 'normal';
 function save() { try { localStorage.setItem(STORE, JSON.stringify(prefs)); } catch { /* private mode */ } }
 setSoundEnabled(prefs.sound);
 setHapticsEnabled(prefs.haptics);
@@ -560,7 +565,7 @@ function frame(now) {
   const raw = Math.min(50, now - lastT);
   lastT = now;
   if (!L || !W) return;
-  const speed = prefs.fast ? 2 : 1;
+  const speed = SPEEDS[prefs.speed].x;
   const dt = raw * speed;
 
   if (state === 'play' || state === 'won' || state === 'lost') {
@@ -837,24 +842,59 @@ $('menuBtn').addEventListener('click', () => {
   if (state !== 'play') return;
   pausedState = state;
   state = 'paused';
-  openModal('Paused', [toggleRow()], [
+  openModal('Paused', [toggleRow(), speedPicker()], [
     { label: 'Resume', fn: () => { closeModal(); state = pausedState; } },
     { label: 'Restart level', secondary: true, fn: () => startLevel(L.n) },
     { label: 'Home', secondary: true, fn: goHome },
   ]);
 });
 
+// Bee speed: a Slow / Normal / Fast picker on the home screen and pause
+// menu; the button in the top bar cycles through the same setting.
 const speedBtn = $('speedBtn');
-function syncSpeed() {
-  $('speedLabel').textContent = prefs.fast ? '2×' : '1×';
-  speedBtn.classList.toggle('fast', prefs.fast);
-}
-speedBtn.addEventListener('click', () => {
-  prefs.fast = !prefs.fast;
+const speedPickers = new Set();
+function setSpeed(key) {
+  prefs.speed = key;
   save();
   syncSpeed();
+}
+function syncSpeed() {
+  $('speedLabel').textContent = SPEEDS[prefs.speed].label;
+  speedBtn.classList.toggle('fast', prefs.speed === 'fast');
+  for (const el of speedPickers) markSpeed(el);
+}
+function markSpeed(el) {
+  for (const b of el.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.speed === prefs.speed));
+}
+function speedPicker(el = document.createElement('div')) {
+  el.className = 'speed-picker';
+  el.setAttribute('role', 'group');
+  el.setAttribute('aria-label', 'Bee speed');
+  const title = document.createElement('span');
+  title.textContent = 'Bee speed';
+  const seg = document.createElement('div');
+  seg.className = 'seg';
+  for (const key of Object.keys(SPEEDS)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.speed = key;
+    b.textContent = SPEEDS[key].label;
+    b.addEventListener('click', () => { unlockAudio(); sfx('click'); setSpeed(key); });
+    seg.append(b);
+  }
+  el.replaceChildren(title, seg);
+  markSpeed(el);
+  // Keep the home picker, plus whichever one the pause menu shows now.
+  for (const old of speedPickers) if (old.id !== 'homeSpeed') speedPickers.delete(old);
+  speedPickers.add(el);
+  return el;
+}
+speedBtn.addEventListener('click', () => {
+  const keys = Object.keys(SPEEDS);
+  setSpeed(keys[(keys.indexOf(prefs.speed) + 1) % keys.length]);
   sfx('click');
 });
+speedPicker($('homeSpeed'));
 syncSpeed();
 
 // ---------- home ----------
