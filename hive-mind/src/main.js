@@ -621,6 +621,68 @@ function startSwarm(card) {
   swarm = { bees: sb, card, revealed: false, start: now };
 }
 
+// Win card: one bee per pixel flies out of the hive in that pixel's color
+// and turns into its square, so the swarm paints the picture.
+function startPixelSwarm(mini, level) {
+  const now = performance.now();
+  sizeFx();
+  const cr = canvas.getBoundingClientRect();
+  const hive = { x: cr.left + lay.hive.x, y: cr.top + lay.hive.y + 10 };
+  const cells = [];
+  level.cells.forEach((v, i) => { if (v >= 0) cells.push(i); });
+  // Fill roughly bottom-up with some scatter, over about 1.8 seconds.
+  const order = cells
+    .map((i) => ({ i, key: (level.h - ((i / level.w) | 0)) + Math.random() * level.h * 0.6 }))
+    .sort((a, b) => a.key - b.key);
+  const spread = 1800;
+  const sb = order.map(({ i }, k) => ({
+    cell: i,
+    col: level.colors[level.cells[i]],
+    lx: mini.pad + (i % level.w + 0.5) * mini.cs,
+    ly: mini.pad + (((i / level.w) | 0) + 0.5) * mini.cs,
+    x0: hive.x + (Math.random() - 0.5) * 12, y0: hive.y,
+    k: (Math.random() - 0.5) * 0.6, seed: Math.random() * 10,
+    start: now + 250 + (k / order.length) * spread,
+    dur: 550 + Math.random() * 300,
+  }));
+  swarm = { kind: 'pixels', bees: sb, mini, size: Math.max(5, Math.min(9, mini.cs * 1.3)) };
+}
+
+function drawPixelSwarm(now) {
+  const c = fctx;
+  const r = swarm.mini.getBoundingClientRect();
+  const sx = r.width / (parseFloat(swarm.mini.style.width) || r.width);
+  const size = swarm.size;
+  let flying = 0;
+  for (const b of swarm.bees) {
+    if (now < b.start) continue;
+    // The card may still be animating in, so aim at where the pixel is now.
+    b.x1 = r.left + b.lx * sx;
+    b.y1 = r.top + b.ly * sx;
+    if (!b.amp) setZigzag(b);
+    const t = (now - b.start) / b.dur;
+    if (t >= 1) {
+      swarm.mini.pixel(b.cell);
+      b.done = true;
+      sfx('deliver');
+      continue;
+    }
+    flying++;
+    const p = flightPos(b, ease(t) * 0.4 + t * 0.6);
+    // Shrink a little as it lands and becomes a pixel.
+    const s = size * (t > 0.8 ? 1 - (t - 0.8) * 2.5 : 1);
+    const frame = ((now / 40 + b.seed) | 0) % 2;
+    c.save();
+    c.translate(p.x, p.y);
+    c.rotate(p.a);
+    c.drawImage(makeBee(b.col, frame, size), -s, -s, s * 2, s * 2);
+    c.restore();
+  }
+  swarm.bees = swarm.bees.filter((b) => !b.done);
+  if (!swarm.bees.length) swarm = null;
+  return flying;
+}
+
 function stopSwarm() {
   swarm = null;
   fctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -632,6 +694,7 @@ function drawSwarm(now) {
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   c.clearRect(0, 0, fx.width, fx.height);
   if (!swarm) return 0;
+  if (swarm.kind === 'pixels') return Math.min(12, drawPixelSwarm(now));
   const size = 11;
   let flying = 0, arrived = 0;
   for (const b of swarm.bees) {
@@ -920,11 +983,13 @@ function winLevel() {
   const won = L;
   setTimeout(() => {
     if (L !== won || state !== 'won') return; // a different level started meanwhile
-    const mini = miniPicture(L, 150);
+    const pixels = !reduceMotion;
+    const mini = miniPicture(L, 150, { empty: pixels });
     openModal(`Level ${n} done!`, [mini, para(`You uncovered: ${L.name}`)], [
       { label: 'Next level', fn: () => startLevel(n + 1) },
       { label: 'Home', secondary: true, fn: goHome },
-    ], { swarm: true });
+    ]);
+    if (pixels) startPixelSwarm(mini, L);
   }, 700);
 }
 
@@ -939,7 +1004,7 @@ function loseLevel() {
 
 function para(text) { const p = document.createElement('p'); p.textContent = text; return p; }
 
-function miniPicture(level, max) {
+function miniPicture(level, max, { empty = false } = {}) {
   const cv = document.createElement('canvas');
   cv.className = 'mini';
   const cs = Math.max(2, Math.floor(max / Math.max(level.w, level.h)));
@@ -950,11 +1015,13 @@ function miniPicture(level, max) {
   cv.style.height = level.h * cs + pad * 2 + 'px';
   const c = cv.getContext('2d');
   c.scale(dpr, dpr);
-  level.cells.forEach((v, i) => {
-    if (v < 0) return;
-    c.fillStyle = level.colors[v];
+  cv.pixel = (i) => {
+    c.fillStyle = level.colors[level.cells[i]];
     c.fillRect(pad + (i % level.w) * cs, pad + ((i / level.w) | 0) * cs, cs, cs);
-  });
+  };
+  cv.cs = cs;
+  cv.pad = pad;
+  if (!empty) level.cells.forEach((v, i) => { if (v >= 0) cv.pixel(i); });
   return cv;
 }
 
